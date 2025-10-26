@@ -63,7 +63,7 @@ function flag($k){ return !empty($_SESSION[$k]) && (int)$_SESSION[$k] === 1; }
                   <li class="user-header">
                     <img src="../files/usuarios/<?= $sesImagen ?>" class="img-circle" alt="User Image">
                     <p>
-                      www.FerreteriaNeko.com - Desarrollando Software
+                      www.FerreteriaNeko.com 
                     </p>
                   </li>
                   <li class="user-footer">
@@ -148,3 +148,4 @@ function flag($k){ return !empty($_SESSION[$k]) && (int)$_SESSION[$k] === 1; }
           </ul>
         </section>
       </aside>
+
