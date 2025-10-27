@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 20-10-2025 a las 03:57:07
+-- Tiempo de generación: 27-10-2025 a las 01:42:41
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.0.30
 
@@ -49,7 +49,6 @@ INSERT INTO `articulo` (`idarticulo`, `idcategoria`, `codigo`, `nombre`, `stock`
 
 -- --------------------------------------------------------
 
-
 --
 -- Estructura de tabla para la tabla `categoria`
 --
@@ -66,7 +65,7 @@ CREATE TABLE `categoria` (
 --
 
 INSERT INTO `categoria` (`idcategoria`, `nombre`, `descripcion`, `condicion`) VALUES
-(7, 'Cilindraje', 'Aceitado de la Marca Bosh', 1),
+(7, 'Cilindraje', 'Aceitado de la Marca Bosh', 0),
 (8, 'Sistema de Embrague', 'Reúne las piezas que permiten transmitir la potencia del motor a la caja de cambios.', 1);
 
 -- --------------------------------------------------------
@@ -175,6 +174,21 @@ set a.stock = a.stock - di.cantidad;
 end
 $$
 DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `password_reset`
+--
+
+CREATE TABLE `password_reset` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -298,8 +312,6 @@ CREATE TABLE `usuario` (
   `direccion` varchar(70) DEFAULT NULL,
   `telefono` varchar(20) DEFAULT NULL,
   `email` varchar(50) DEFAULT NULL,
-  `cargo` varchar(20) DEFAULT NULL,
-  `login` varchar(20) NOT NULL,
   `clave` varchar(64) NOT NULL,
   `imagen` varchar(50) NOT NULL,
   `condicion` tinyint(1) NOT NULL DEFAULT 1
@@ -309,11 +321,12 @@ CREATE TABLE `usuario` (
 -- Volcado de datos para la tabla `usuario`
 --
 
-INSERT INTO `usuario` (`idusuario`, `id_tipodoc`, `id_rol`, `nombre`, `tipo_documento`, `num_documento`, `direccion`, `telefono`, `email`, `cargo`, `login`, `clave`, `imagen`, `condicion`) VALUES
-(3, 1, 2, 'WALTER ELEONEL GIL TERRONES', '', '16617373', 'Eleodoro Coral 270', '966853147', 'serg.dangr@hotmail.com', NULL, 'sergio', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
-(4, 2, 3, 'BOTICAS IP S.A.C.', '', '20608430301', 'Eleodoro Coral 270', '966853147', 'serg.el_crack@hotmail.com', NULL, 'raul32', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
-(5, 1, 1, 'CRISTIAN MANFREDY DAVILA VALLE', 'DNI', '74134653', 'Barcelona 210 Urb San Juan', '932 375 500', 'cristiandavilavalle@gmail.com', '', 'Cristian Davila', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '1760918574.jpg', 1),
-(6, 1, 1, 'CARLOS JHEREMY SERPA CORTEZ', '', '74417406', 'San juan', '975475942', 'cjsc2002.2002@gmail.com', NULL, 'Serpa123', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '', 1);
+INSERT INTO `usuario` (`idusuario`, `id_tipodoc`, `id_rol`, `nombre`, `tipo_documento`, `num_documento`, `direccion`, `telefono`, `email`, `clave`, `imagen`, `condicion`) VALUES
+(3, 1, 2, 'WALTER ELEONEL GIL TERRONES', '', '16617373', 'Eleodoro Coral 270', '966853147', 'serg.dangr@hotmail.com', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
+(4, 2, 3, 'BOTICAS IP S.A.C.', '', '20608430301', 'Eleodoro Coral 270', '966853147', 'serg.el_crack@hotmail.com', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
+(5, 1, 1, 'CRISTIAN MANFREDY DAVILA VALLE', 'DNI', '74134653', 'Barcelona 210 Urb San Juan', '932 375 500', 'cristiandavilavalle@gmail.com', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '1760918574.jpg', 1),
+(6, 1, 1, 'CARLOS JHEREMY SERPA CORTEZ', '', '74417406', 'San juan', '975475942', 'cjsc2002.2002@gmail.com', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '', 1),
+(12, 1, 2, 'JOSE EDUARDO ANGELES BRAVO', '', '72928002', '', '940367492', 'darkedu1019@gmail.com', '1e5aea5231bf2cf071822f24852f8d049c2ee745e3b59ce505f6f2160f2ddd2d', '', 1);
 
 -- --------------------------------------------------------
 
@@ -397,6 +410,15 @@ ALTER TABLE `ingreso`
   ADD KEY `fk_ingreso_usuario_idx` (`idusuario`);
 
 --
+-- Indices de la tabla `password_reset`
+--
+ALTER TABLE `password_reset`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_token` (`token_hash`),
+  ADD KEY `idx_user` (`user_id`),
+  ADD KEY `idx_expires` (`expires_at`);
+
+--
 -- Indices de la tabla `permiso`
 --
 ALTER TABLE `permiso`
@@ -406,7 +428,8 @@ ALTER TABLE `permiso`
 -- Indices de la tabla `persona`
 --
 ALTER TABLE `persona`
-  ADD PRIMARY KEY (`idpersona`);
+  ADD PRIMARY KEY (`idpersona`),
+  ADD UNIQUE KEY `uniq_proveedor_doc` (`tipo_persona`,`num_documento`);
 
 --
 -- Indices de la tabla `rol_usuarios`
@@ -434,8 +457,6 @@ ALTER TABLE `user_otp`
 --
 ALTER TABLE `usuario`
   ADD PRIMARY KEY (`idusuario`),
-  ADD UNIQUE KEY `login_UNIQUE` (`login`),
-  ADD UNIQUE KEY `uq_usuario_login` (`login`),
   ADD UNIQUE KEY `uq_usuario_email` (`email`),
   ADD UNIQUE KEY `uq_usuario_doc` (`id_tipodoc`,`num_documento`),
   ADD KEY `fk_usuario_rol` (`id_rol`);
@@ -491,6 +512,12 @@ ALTER TABLE `ingreso`
   MODIFY `idingreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
+-- AUTO_INCREMENT de la tabla `password_reset`
+--
+ALTER TABLE `password_reset`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `permiso`
 --
 ALTER TABLE `permiso`
@@ -512,13 +539,13 @@ ALTER TABLE `rol_usuarios`
 -- AUTO_INCREMENT de la tabla `user_otp`
 --
 ALTER TABLE `user_otp`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `idusuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `idusuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario_permiso`
@@ -564,6 +591,12 @@ ALTER TABLE `ingreso`
   ADD CONSTRAINT `fk_ingreso_usuario` FOREIGN KEY (`idusuario`) REFERENCES `usuario` (`idusuario`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
+-- Filtros para la tabla `password_reset`
+--
+ALTER TABLE `password_reset`
+  ADD CONSTRAINT `fk_reset_usuario` FOREIGN KEY (`user_id`) REFERENCES `usuario` (`idusuario`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Filtros para la tabla `user_otp`
 --
 ALTER TABLE `user_otp`
@@ -594,22 +627,3 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
---
--- Estructura de tabla para la tabla `olvidaste contraseña`
---
-CREATE TABLE `password_reset` (
-  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `token_hash` char(64) NOT NULL,
-  `expires_at` datetime NOT NULL,
-  `used` tinyint(1) NOT NULL DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_token` (`token_hash`),
-  KEY `idx_user` (`user_id`),
-  KEY `idx_expires` (`expires_at`),
-  CONSTRAINT `fk_reset_usuario` FOREIGN KEY (`user_id`) REFERENCES `usuario` (`idusuario`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci; 
-
-ALTER TABLE persona
-ADD UNIQUE KEY uniq_proveedor_doc (tipo_persona, num_documento);
