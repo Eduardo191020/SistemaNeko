@@ -122,7 +122,7 @@ function flag($k){ return !empty($_SESSION[$k]) && (int)$_SESSION[$k] === 1; }
                 <a href="#"><i class="fa fa-folder"></i> <span>Acceso</span><i class="fa fa-angle-left pull-right"></i></a>
                 <ul class="treeview-menu">
                   <li id="lUsuarios"><a href="usuario.php"><i class="fa fa-circle-o"></i> Usuarios</a></li>
-                  <li id="lPermisos"><a href="permiso.php"><i class="fa fa-circle-o"></i> Permisos</a></li>
+                  <li id="lRol"><a href="rol.php"><i class="fa fa-circle-o"></i> Roles Usuario</a></li>
                 </ul>
               </li>
             <?php endif; ?>
