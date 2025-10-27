@@ -7,65 +7,198 @@ require_once __DIR__ . '/includes/db.php';
 $error   = '';
 $success = '';
 
-// ------------------------
-// Validaciones
-// ------------------------
 function validar_dni(string $doc): bool { return (bool)preg_match('/^[0-9]{8}$/', $doc); }
 function validar_ruc(string $doc): bool {
-    if (!preg_match('/^[0-9]{11}$/', $doc)) return false;
-    $factors = [5,4,3,2,7,6,5,4,3,2];
-    $sum = 0;
-    for ($i=0; $i<10; $i++) { $sum += ((int)$doc[$i]) * $factors[$i]; }
-    $resto  = $sum % 11;
-    $digito = 11 - $resto;
-    if ($digito === 10) $digito = 0;
-    elseif ($digito === 11) $digito = 1;
-    return $digito === (int)$doc[10];
+  if (!preg_match('/^[0-9]{11}$/', $doc)) return false;
+  $factors = [5,4,3,2,7,6,5,4,3,2];
+  $sum = 0;
+  for ($i=0; $i<10; $i++) { $sum += ((int)$doc[$i]) * $factors[$i]; }
+  $resto  = $sum % 11;
+  $digito = 11 - $resto;
+  if ($digito === 10) $digito = 0;
+  elseif ($digito === 11) $digito = 1;
+  return $digito === (int)$doc[10];
 }
 function validar_pasaporte(string $doc): bool { return (bool)preg_match('/^[A-Za-z0-9]{9,12}$/', $doc); }
 
-function validar_password_robusta(
-    string $pwd,
-    string $login = '',
-    string $email = '',
-    string $nombres = '',
-    string $apellidos = ''
-): ?string {
-    if (strlen($pwd) < 10 || strlen($pwd) > 64) return 'La contraseña debe tener entre 10 y 64 caracteres.';
-    if (preg_match('/\s/', $pwd)) return 'La contraseña no debe contener espacios.';
-    if (!preg_match('/[A-Z]/', $pwd)) return 'Debe incluir al menos una letra mayúscula (A-Z).';
-    if (!preg_match('/[a-z]/', $pwd)) return 'Debe incluir al menos una letra minúscula (a-z).';
-    if (!preg_match('/[0-9]/', $pwd)) return 'Debe incluir al menos un dígito (0-9).';
-    if (!preg_match('/[!@#$%^&*()_\+\=\-\[\]{};:,.?]/', $pwd)) return 'Debe incluir al menos un caracter especial: !@#$%^&*()_+=-[]{};:,.?';
-
-    $lowerPwd = mb_strtolower($pwd, 'UTF-8');
-    $prohibidos = [];
-    if ($login) $prohibidos[] = mb_strtolower($login, 'UTF-8');
-    if ($email) { $local = mb_strtolower((string)strtok($email, '@'), 'UTF-8'); if ($local) $prohibidos[] = $local; }
-    foreach (preg_split('/\s+/', trim($nombres . ' ' . $apellidos)) as $pieza) {
-        $pieza = mb_strtolower($pieza, 'UTF-8');
-        if (mb_strlen($pieza, 'UTF-8') >= 4) $prohibidos[] = $pieza;
+/** Valida que el correo no tenga patrones sospechosos */
+function validar_patron_email(string $email): ?string {
+  $partes = explode('@', $email);
+  if (count($partes) !== 2) return 'Formato de email inválido';
+  
+  $local = strtolower($partes[0]);
+  
+  // 1. Longitud mínima del local
+  if (strlen($local) < 3) {
+    return 'El nombre de usuario es demasiado corto (mín. 3 caracteres)';
+  }
+  
+  // 2. Detectar secuencias repetitivas (aaaa, xxxx, 1111)
+  if (preg_match('/(.)\1{3,}/', $local)) {
+    return 'El correo contiene caracteres repetitivos sospechosos';
+  }
+  
+  // 3. Detectar patrones aleatorios comunes
+  $patrones_sospechosos = [
+    '/^[a-z]{3}\d{3,}$/',           // abc123, xyz789
+    '/^[a-z]{6,}$/',                 // asdfgh, qwerty (solo letras)
+    '/^\d{4,}$/',                    // 12345, 67890 (solo números)
+    '/^(x+|y+|z+|a+)(x+|y+|z+|a+)/', // xxxyyy, aaabbb
+    '/^test\d*$/',                   // test, test123
+    '/^user\d*$/',                   // user123
+    '/^admin\d*$/',                  // admin1
+    '/^demo\d*$/',                   // demo123
+    '/^(abc|xyz|qwe|asd|zxc)\d*$/', // abc123, xyz456
+  ];
+  
+  foreach ($patrones_sospechosos as $patron) {
+    if (preg_match($patron, $local)) {
+      return 'El correo parece ser generado aleatoriamente o de prueba';
     }
-    foreach ($prohibidos as $p) {
-        if ($p !== '' && mb_strpos($lowerPwd, $p, 0, 'UTF-8') !== false) {
-            return 'No debe contener partes de tu usuario, correo, nombres o apellidos.';
+  }
+  
+  // 4. Verificar vocales (correos reales suelen tener vocales)
+  $vocales = preg_match_all('/[aeiou]/', $local);
+  $total = strlen($local);
+  
+  if ($total > 8 && $vocales === 0) {
+    return 'El correo parece no ser válido (sin vocales)';
+  }
+  
+  // 5. Verificar diversidad de caracteres
+  $caracteres_unicos = count(array_unique(str_split($local)));
+  if ($total > 6 && $caracteres_unicos <= 3) {
+    return 'El correo tiene un patrón demasiado repetitivo';
+  }
+  
+  // 6. Verificar secuencias consecutivas (abcdef, 123456)
+  for ($i = 0; $i < strlen($local) - 3; $i++) {
+    $seq = substr($local, $i, 4);
+    if (preg_match('/^[a-z]+$/', $seq)) {
+      $consecutivos = true;
+      for ($j = 1; $j < strlen($seq); $j++) {
+        if (ord($seq[$j]) !== ord($seq[$j-1]) + 1) {
+          $consecutivos = false;
+          break;
         }
+      }
+      if ($consecutivos) {
+        return 'El correo contiene secuencias alfabéticas sospechosas';
+      }
     }
-
-    $comunes = ['123456','123456789','12345678','12345','qwerty','password','111111','abc123','123123','iloveyou','admin','welcome','monkey','dragon','qwertyuiop','000000'];
-    if (in_array(mb_strtolower($pwd, 'UTF-8'), $comunes, true)) return 'La contraseña es demasiado común. Elige otra.';
-    return null;
+    if (preg_match('/^\d+$/', $seq)) {
+      $consecutivos = true;
+      for ($j = 1; $j < strlen($seq); $j++) {
+        if ((int)$seq[$j] !== (int)$seq[$j-1] + 1) {
+          $consecutivos = false;
+          break;
+        }
+      }
+      if ($consecutivos) {
+        return 'El correo contiene secuencias numéricas sospechosas';
+      }
+    }
+  }
+  
+  // 7. Lista de nombres falsos conocidos
+  $nombres_falsos = [
+    'asdasd', 'asdfgh', 'qwerty', 'qwertyui', 'zxcvbn',
+    'testtest', 'test123', 'prueba', 'ejemplo',
+    'xxxyyy', 'aaabbb', 'noname', 'random', 'fake',
+    'temporal', 'temp', 'basura', 'spam'
+  ];
+  
+  foreach ($nombres_falsos as $falso) {
+    if (strpos($local, $falso) !== false) {
+      return 'El correo parece ser temporal o de prueba';
+    }
+  }
+  
+  return null; // Patrón válido
 }
 
-// ------------------------
-// Catálogos
-// ------------------------
-$tiposDoc = $pdo->query('SELECT id_tipodoc, nombre FROM tipo_documento ORDER BY id_tipodoc')->fetchAll();
-$roles    = $pdo->query('SELECT id_rol, nombre FROM rol_usuarios WHERE estado = 1 ORDER BY id_rol')->fetchAll();
+/** Valida que el correo electrónico sea real y accesible */
+function validar_email_real(string $email): ?string {
+  // 1. Validación de formato
+  if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    return 'El formato del correo no es válido.';
+  }
 
-// ------------------------
-// Valores del formulario
-// ------------------------
+  // 2. Validar patrones sospechosos
+  $error_patron = validar_patron_email($email);
+  if ($error_patron !== null) {
+    return $error_patron;
+  }
+
+  // 3. Extraer dominio
+  $parts = explode('@', $email);
+  if (count($parts) !== 2) return 'El correo no tiene un formato válido.';
+  $domain = $parts[1];
+
+  // 4. Verificar que el dominio tenga registros MX (servidores de correo)
+  if (!checkdnsrr($domain, 'MX') && !checkdnsrr($domain, 'A')) {
+    return 'El dominio del correo no existe o no puede recibir emails.';
+  }
+
+  // 5. Lista de dominios desechables comunes
+  $disposable = [
+    'tempmail.com', 'guerrillamail.com', '10minutemail.com', 'throwaway.email',
+    'mailinator.com', 'trashmail.com', 'yopmail.com', 'maildrop.cc',
+    'temp-mail.org', 'fakeinbox.com', 'sharklasers.com', 'guerrillamailblock.com',
+    'pokemail.net', 'spam4.me', 'grr.la', 'dispostable.com',
+    'tempinbox.com', 'minuteinbox.com', 'emailondeck.com',
+    'mytemp.email', 'mohmal.com', 'moakt.com'
+  ];
+  if (in_array(strtolower($domain), $disposable, true)) {
+    return 'No se permiten correos temporales o desechables.';
+  }
+
+  return null; // Email válido
+}
+
+/** Valida contraseña robusta */
+function validar_password_robusta(
+  string $pwd,
+  string $email = '',
+  string $nombres = '',
+  string $apellidos = ''
+): ?string {
+  if (strlen($pwd) < 10 || strlen($pwd) > 64) return 'La contraseña debe tener entre 10 y 64 caracteres.';
+  if (preg_match('/\s/', $pwd)) return 'La contraseña no debe contener espacios.';
+  if (!preg_match('/[A-Z]/', $pwd)) return 'Debe incluir al menos una letra mayúscula (A-Z).';
+  if (!preg_match('/[a-z]/', $pwd)) return 'Debe incluir al menos una letra minúscula (a-z).';
+  if (!preg_match('/[0-9]/', $pwd)) return 'Debe incluir al menos un dígito (0-9).';
+  if (!preg_match('/[!@#$%^&*()_\+\=\-\[\]{};:,.?]/', $pwd)) return 'Debe incluir al menos un caracter especial: !@#$%^&*()_+=-[]{};:,.?';
+
+  $lowerPwd = mb_strtolower($pwd, 'UTF-8');
+  $prohibidos = [];
+  
+  if ($email) { 
+    $local = mb_strtolower((string)strtok($email, '@'), 'UTF-8'); 
+    if ($local) $prohibidos[] = $local; 
+  }
+  
+  foreach (preg_split('/\s+/', trim($nombres . ' ' . $apellidos)) as $pieza) {
+    $pieza = mb_strtolower($pieza, 'UTF-8');
+    if (mb_strlen($pieza, 'UTF-8') >= 4) $prohibidos[] = $pieza;
+  }
+  
+  foreach ($prohibidos as $p) {
+    if ($p !== '' && mb_strpos($lowerPwd, $p, 0, 'UTF-8') !== false) {
+      return 'No debe contener partes de tu correo, nombres o apellidos.';
+    }
+  }
+
+  $comunes = ['123456','123456789','12345678','12345','qwerty','password','111111','abc123','123123','iloveyou','admin','welcome','monkey','dragon','qwertyuiop','000000'];
+  if (in_array(mb_strtolower($pwd, 'UTF-8'), $comunes, true)) return 'La contraseña es demasiado común. Elige otra.';
+  return null;
+}
+
+// Catálogos
+$tiposDoc = $pdo->query('SELECT id_tipodoc, nombre FROM tipo_documento ORDER BY id_tipodoc')->fetchAll();
+$roles = $pdo->query('SELECT id_rol, nombre FROM rol_usuarios WHERE estado = 1 AND id_rol != 1 ORDER BY id_rol')->fetchAll();
+
+// Valores del form
 $id_tipodoc    = (int)($_POST['id_tipodoc'] ?? 0);
 $id_rol        = (int)($_POST['id_rol'] ?? 0);
 $nro_documento = trim($_POST['nro_documento'] ?? '');
@@ -73,106 +206,134 @@ $nombres       = trim($_POST['nombres'] ?? '');
 $apellidos     = trim($_POST['apellidos'] ?? '');
 $empresa       = trim($_POST['empresa'] ?? '');
 $email         = trim($_POST['email'] ?? '');
-$loginU        = trim($_POST['login'] ?? '');
 $telefono      = trim($_POST['telefono'] ?? '');
 $direccion     = trim($_POST['direccion'] ?? '');
 
-// ------------------------
-// Procesamiento POST
-// ------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $password = $_POST['password'] ?? '';
-    $confirm  = $_POST['confirm'] ?? '';
+  $password = $_POST['password'] ?? '';
+  $confirm  = $_POST['confirm'] ?? '';
 
-    if (!$id_tipodoc || !$id_rol || !$nro_documento || !$email || !$loginU || !$password || !$confirm) {
-        $error = 'Todos los campos son obligatorios.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'El correo no es válido.';
-    } elseif ($password !== $confirm) {
-        $error = 'Las contraseñas no coinciden.';
-    } else {
-        // Validar doc por tipo
-        $okDoc = false;
-        if ($id_tipodoc === 1) $okDoc = validar_dni($nro_documento);
-        elseif ($id_tipodoc === 2) $okDoc = validar_ruc($nro_documento);
-        elseif ($id_tipodoc === 3) $okDoc = validar_pasaporte($nro_documento);
-
-        if (!$okDoc) {
-            $error = 'Número de documento inválido para el tipo seleccionado.';
-        } else {
-            // Ajuste de nombres según tipo
-            if ($id_tipodoc === 2) { // RUC
-                if ($empresa === '') {
-                    $error = 'La razón social no fue completada. Usa el autocompletado por SUNAT.';
-                } else {
-                    $nombres   = $empresa;
-                    $apellidos = '';
-                }
-            } else {
-                if ($nombres === '' || $apellidos === '') {
-                    $error = 'Nombres y apellidos son obligatorios.';
-                }
-            }
-
-            // Validación ligera de teléfono/dirección
-            if ($error === '') {
-                if ($telefono !== '' && !preg_match('/^[0-9+\-\s]{6,20}$/', $telefono)) {
-                    $error = 'Teléfono no válido.';
-                } elseif ($direccion !== '' && mb_strlen($direccion, 'UTF-8') > 70) {
-                    $error = 'Dirección demasiado larga (máx 70).';
-                }
-            }
-
-            // Validación de contraseña
-            if ($error === '') {
-                $errPwd = validar_password_robusta($password, $loginU, $email, $nombres, $apellidos);
-                if ($errPwd !== null) $error = $errPwd;
-            }
-
-            // ------------------------
-            // Inserción en BD
-            // ------------------------
-            if ($error === '') {
-                // Revisar duplicados
-                $dup = $pdo->prepare('
-                    SELECT 1 FROM usuario
-                    WHERE email = ? OR login = ? OR (id_tipodoc = ? AND num_documento = ?)
-                    LIMIT 1
-                ');
-                $dup->execute([$email, $loginU, $id_tipodoc, $nro_documento]);
-
-                if ($dup->fetch()) {
-                    $error = 'El email, usuario o documento ya está registrado.';
-                } else {
-                    $hash = hash('sha256', $password);
-                    $nombreFinal = ($id_tipodoc === 2) ? $empresa : trim($nombres . ' ' . $apellidos);
-
-                    // Campos opcionales
-                    $tipo_documento = ''; // vacío si no se proporciona
-                    $imagen         = ''; // vacío si no se proporciona
-
-                    $ins = $pdo->prepare('
-                        INSERT INTO usuario
-                            (id_tipodoc, tipo_documento, num_documento, id_rol, nombre, email, login, clave, telefono, direccion, imagen, condicion)
-                        VALUES
-                            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                    ');
-
-                    if ($ins->execute([$id_tipodoc, $tipo_documento, $nro_documento, $id_rol, $nombreFinal, $email, $loginU, $hash, $telefono, $direccion, $imagen])) {
-                        $success = 'Registro exitoso. Ahora puedes iniciar sesión.';
-                        // Limpiar campos
-                        $id_tipodoc = $id_rol = 0;
-                        $nro_documento = $nombres = $apellidos = $empresa = $email = $loginU = $telefono = $direccion = '';
-                    } else {
-                        $error = 'Error al registrar. Intenta nuevamente.';
-                    }
-                }
-            }
-        }
+  // Validación básica
+  if (!$id_tipodoc || !$id_rol || !$nro_documento || !$email || !$password || !$confirm) {
+    $error = 'Todos los campos obligatorios deben ser completados.';
+  } 
+  // Protección contra Admin
+  elseif ($id_rol === 1) {
+    $error = 'Acceso denegado. No puedes registrarte con ese rol.';
+  }
+  // Verificar que el rol existe y está activo (NO es Admin)
+  else {
+    $checkRol = $pdo->prepare('SELECT 1 FROM rol_usuarios WHERE id_rol = ? AND estado = 1 AND id_rol != 1 LIMIT 1');
+    $checkRol->execute([$id_rol]);
+    if (!$checkRol->fetch()) {
+      $error = 'El rol seleccionado no es válido o no está disponible para registro público.';
     }
+  }
+
+  // Continuar con validaciones
+  if ($error === '') {
+    // ⭐ VALIDAR EMAIL REAL
+    $emailError = validar_email_real($email);
+    if ($emailError !== null) {
+      $error = $emailError;
+    } elseif ($password !== $confirm) {
+      $error = 'Las contraseñas no coinciden.';
+    } else {
+      // Validar documento por tipo
+      $okDoc = false;
+      if     ($id_tipodoc === 1) $okDoc = validar_dni($nro_documento);
+      elseif ($id_tipodoc === 2) $okDoc = validar_ruc($nro_documento);
+      elseif ($id_tipodoc === 3) $okDoc = validar_pasaporte($nro_documento);
+
+      if (!$okDoc) {
+        $error = 'Número de documento inválido para el tipo seleccionado.';
+      } else {
+        // Ajuste de nombres según tipo
+        if ($id_tipodoc === 2) { // RUC
+          if ($empresa === '') {
+            $error = 'La razón social no fue completada. Usa el autocompletado por SUNAT.';
+          } else {
+            $nombres   = $empresa;
+            $apellidos = '';
+          }
+        } else {
+          // DNI o Pasaporte
+          if ($nombres === '' || $apellidos === '') {
+            $error = 'Nombres y apellidos son obligatorios (usa el autocompletado).';
+          }
+        }
+
+        // Validación telefono/direccion
+        if ($error === '') {
+          if ($telefono !== '' && !preg_match('/^[0-9+\-\s]{6,20}$/', $telefono)) {
+            $error = 'Teléfono no válido.';
+          } elseif ($direccion !== '' && mb_strlen($direccion, 'UTF-8') > 70) {
+            $error = 'Dirección demasiado larga (máx 70).';
+          }
+        }
+
+        // Validación contraseña robusta
+        if ($error === '') {
+          $errPwd = validar_password_robusta($password, $email, $nombres, $apellidos);
+          if ($errPwd !== null) {
+            $error = $errPwd;
+          }
+        }
+
+        if ($error === '') {
+          // ⭐ VERIFICAR DUPLICADOS (email O documento)
+          $dup = $pdo->prepare('
+            SELECT 
+              CASE 
+                WHEN email = ? THEN "email"
+                WHEN id_tipodoc = ? AND num_documento = ? THEN "documento"
+                ELSE "otro"
+              END as tipo_duplicado
+            FROM usuario
+            WHERE email = ?
+               OR (id_tipodoc = ? AND num_documento = ?)
+            LIMIT 1
+          ');
+          $dup->execute([$email, $id_tipodoc, $nro_documento, $email, $id_tipodoc, $nro_documento]);
+          $duplicado = $dup->fetch();
+          
+          if ($duplicado) {
+            if ($duplicado['tipo_duplicado'] === 'email') {
+              $error = 'Este correo electrónico ya está registrado. ¿Olvidaste tu contraseña?';
+            } elseif ($duplicado['tipo_duplicado'] === 'documento') {
+              $error = 'Este documento ya está registrado. Una persona no puede registrarse dos veces.';
+            } else {
+              $error = 'Ya existe una cuenta con estos datos.';
+            }
+          } else {
+            // ⭐ Generar login automático desde el email
+            $loginAuto = explode('@', $email)[0]; // parte antes del @
+            
+            $hash = hash('sha256', $password);
+            $nombreFinal = ($id_tipodoc === 2) ? $empresa : trim($nombres . ' ' . $apellidos);
+
+            // Inserción en BD (login se genera automáticamente)
+            $ins = $pdo->prepare('
+              INSERT INTO usuario
+                (id_tipodoc, num_documento, id_rol, nombre, email, clave, telefono, direccion, condicion)
+              VALUES
+                (?,          ?,              ?,      ?,      ?,     ?,     ?,        ?,         1)
+            ');
+            if ($ins->execute([$id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $hash, $telefono, $direccion])) {
+              $success = 'Registro exitoso. Ahora puedes iniciar sesión con tu correo electrónico.';
+              // Limpiar variables
+              $id_tipodoc = $id_rol = 0;
+              $nro_documento = $nombres = $apellidos = $empresa = $email = $telefono = $direccion = '';
+            } else {
+              $error = 'Error al registrar. Intenta nuevamente.';
+            }
+          }
+        }
+      }
+    }
+  }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -253,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <label class="field">
             <span class="field-label">Nro. de documento *</span>
-            <input id="nrodoc" type="text" name="nro_documento" value="<?= htmlspecialchars($nro_documento) ?>" required>
+            <input id="nrodoc" type="input" name="nro_documento" value="<?= htmlspecialchars($nro_documento) ?>" onKeypress="if (event.keyCode < 45 || event.keyCode > 57) event.returnValue = false;" required>
             <small id="hintdoc" class="hint"></small>
           </label>
 
@@ -274,19 +435,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input id="apellidos" type="text" name="apellidos" value="<?= htmlspecialchars($apellidos) ?>" placeholder="Autocompletado por RENIEC" readonly>
           </label>
 
+          <!-- ⭐ EMAIL (validación en tiempo real) -->
           <label class="field">
-            <span class="field-label">Email *</span>
-            <input type="email" name="email" value="<?= htmlspecialchars($email) ?>" required>
-          </label>
-
-          <label class="field">
-            <span class="field-label">Usuario *</span>
-            <input type="text" name="login" value="<?= htmlspecialchars($loginU) ?>" required>
+            <span class="field-label">Correo electrónico *</span>
+            <div style="position:relative;">
+              <input id="email" type="email" name="email" value="<?= htmlspecialchars($email) ?>"style="width:100%;" required>
+              <span id="email-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:1.2rem;"></span>
+            </div>
+            <small id="email-hint" class="hint">Usarás este correo para iniciar sesión</small>
           </label>
 
           <label class="field">
             <span class="field-label">Teléfono</span>
-            <input type="text" name="telefono" value="<?= htmlspecialchars($telefono) ?>" placeholder="Opcional (6–20 caracteres)">
+            <input type="input" name="telefono" value="<?= htmlspecialchars($telefono) ?>" placeholder="Máx 9 caracteres" onKeypress="if (event.keyCode < 45 || event.keyCode > 57) event.returnValue = false;" maxlength="9">
           </label>
 
           <label class="field">
@@ -294,7 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" name="direccion" value="<?= htmlspecialchars($direccion) ?>" placeholder="Opcional (máx. 70)">
           </label>
 
-          <!-- Rol (SIN ADMIN) -->
+          <!-- Rol -->
           <label class="field">
             <span class="field-label">Selecciona tu rol *</span>
             <div class="role-selector">
@@ -308,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="field">
             <span class="field-label">Contraseña *</span>
             <div class="input-wrap">
-              <input id="pwd" type="password" name="password" required aria-describedby="pwdHelp">
+              <input id="pwd" type="password" name="password" required aria-describedby="pwdHelp" style="width:90%;">
               <span class="input-eye" id="togglePwd" title="Ver/Ocultar">👁️</span>
             </div>
             <small id="pwdHelp" class="hint">Debe cumplir todos los requisitos:</small>
@@ -319,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <div class="req bad" id="r-num"><i></i> Al menos 1 número (0-9)</div>
               <div class="req bad" id="r-spe"><i></i> Al menos 1 especial (!@#$%^&*)</div>
               <div class="req bad" id="r-spc"><i></i> Sin espacios</div>
-              <div class="req bad" id="r-pii"><i></i> No contiene usuario/correo/nombres</div>
+              <div class="req bad" id="r-pii"><i></i> No contiene correo/nombres</div>
               <div class="req bad" id="r-common"><i></i> No es contraseña común</div>
             </div>
           </label>
@@ -327,7 +488,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="field">
             <span class="field-label">Confirmar contraseña *</span>
             <div class="input-wrap">
-              <input id="pwd2" type="password" name="confirm" required>
+              <input id="pwd2" type="password" name="confirm" style="width:90%;"required>
               <span class="input-eye" id="togglePwd2" title="Ver/Ocultar">👁️</span>
             </div>
           </label>
@@ -340,6 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
 <script>
+
 // Cambiar máscara según tipo documento
 const tipodoc=document.getElementById('tipodoc');
 const nrodoc=document.getElementById('nrodoc');
@@ -382,12 +544,11 @@ function togglePass(id, btnId){
 togglePass('pwd','togglePwd');
 togglePass('pwd2','togglePwd2');
 
-// Validación en vivo
+// Validación en vivo de contraseña
 (function(){
   const pwd = document.getElementById('pwd');
   const pwd2 = document.getElementById('pwd2');
-  const login = document.querySelector('input[name="login"]');
-  const email = document.querySelector('input[name="email"]');
+  const email = document.getElementById('email');
 
   const common = new Set(['123456','123456789','12345678','12345','qwerty','password','111111','abc123','123123','iloveyou','admin','welcome','monkey','dragon','qwertyuiop','000000']);
 
@@ -408,7 +569,6 @@ togglePass('pwd2','togglePwd2');
     const lowers = v.toLowerCase();
     let pii = true;
     const pieces = [];
-    if (login && login.value) pieces.push(login.value.toLowerCase());
     if (email && email.value) pieces.push((email.value.split('@')[0]||'').toLowerCase());
     (nombres.value+' '+apellidos.value).split(/\s+/).forEach(p=>{ p=p.toLowerCase(); if(p.length>=4) pieces.push(p); });
     for (const p of pieces){ if(p && lowers.includes(p)){ pii=false; break; } }
@@ -431,7 +591,6 @@ togglePass('pwd2','togglePwd2');
   }
   pwd.addEventListener('input', syncValidity);
   pwd2.addEventListener('input', syncValidity);
-  if(login) login.addEventListener('input', syncValidity);
   if(email) email.addEventListener('input', syncValidity);
 })();
 
@@ -514,6 +673,96 @@ togglePass('pwd2','togglePwd2');
   nrodoc.addEventListener('input', debounce);
   nrodoc.addEventListener('blur', ()=>{ if(ready()) consulta(); });
 })();
+
+// VALIDACIÓN DE EMAIL EN TIEMPO REAL
+(function(){
+  const emailInput = document.getElementById('email');
+  const emailHint = document.getElementById('email-hint');
+  const emailStatus = document.getElementById('email-status');
+  let timer;
+  let inflight;
+  let lastChecked = '';
+
+  function isValidFormat(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  async function validateEmail() {
+    const email = emailInput.value.trim();
+    
+    // Resetear si está vacío
+    if (!email) {
+      emailStatus.textContent = '';
+      emailHint.textContent = 'Usarás este correo para iniciar sesión';
+      emailHint.style.color = '';
+      emailInput.setCustomValidity('');
+      return;
+    }
+
+    // No revisar si es el mismo que ya validamos
+    if (email === lastChecked) return;
+
+    // Validar formato básico primero
+    if (!isValidFormat(email)) {
+      emailStatus.textContent = '❌';
+      emailHint.textContent = 'Formato de correo inválido';
+      emailHint.style.color = '#ef4444';
+      emailInput.setCustomValidity('Formato inválido');
+      return;
+    }
+
+    // Cancelar request anterior si existe
+    if (inflight) inflight.abort();
+    inflight = new AbortController();
+
+    // Mostrar estado de carga
+    emailStatus.textContent = '⏳';
+    emailHint.textContent = 'Verificando correo...';
+    emailHint.style.color = '#3b82f6';
+
+    try {
+      const res = await fetch(`ajax/validate_email.php?email=${encodeURIComponent(email)}`, {
+        headers: {'X-Requested-With': 'fetch'},
+        cache: 'no-store',
+        signal: inflight.signal
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.valid) {
+        emailStatus.textContent = '✅';
+        emailHint.textContent = data.verified 
+          ? 'Correo verificado y válido' 
+          : 'Correo válido (dominio verificado)';
+        emailHint.style.color = '#10b981';
+        emailInput.setCustomValidity('');
+        lastChecked = email;
+      } else {
+        emailStatus.textContent = '❌';
+        emailHint.textContent = data.message || 'Este correo no es válido';
+        emailHint.style.color = '#ef4444';
+        emailInput.setCustomValidity(data.message || 'Email inválido');
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      
+      // Error en la validación, pero no bloqueamos
+      emailStatus.textContent = '⚠️';
+      emailHint.textContent = 'No se pudo verificar. Asegúrate que sea un correo real.';
+      emailHint.style.color = '#f59e0b';
+      emailInput.setCustomValidity(''); // No bloquear por error de red
+    }
+  }
+
+  function debounce() {
+    clearTimeout(timer);
+    timer = setTimeout(validateEmail, 800); // 800ms después de dejar de escribir
+  }
+
+  emailInput.addEventListener('input', debounce);
+  emailInput.addEventListener('blur', validateEmail);
+})();
+
 </script>
 </body>
 </html>

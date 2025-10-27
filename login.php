@@ -19,14 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           idusuario   AS id_usuario,
           nombre      AS nombre,
           email,
-          login,
           clave,
           condicion   AS estado   -- 1 = activo
        FROM usuario
-       WHERE (email = ? OR login = ?)
+       WHERE (email = ?)
        LIMIT 1'
     );
-    $stmt->execute([$identity, $identity]);
+    $stmt->execute([$identity]);
     $user = $stmt->fetch();
 
     if ($user && (int)$user['estado'] === 1) {

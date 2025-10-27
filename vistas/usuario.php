@@ -37,7 +37,6 @@ if ($_SESSION['acceso']==1)
                             <th>Número</th>
                             <th>Teléfono</th>
                             <th>Email</th>
-                            <th>Login</th>
                             <th>Foto</th>
                             <th>Estado</th>
                           </thead>
@@ -50,7 +49,6 @@ if ($_SESSION['acceso']==1)
                             <th>Número</th>
                             <th>Teléfono</th>
                             <th>Email</th>
-                            <th>Login</th>
                             <th>Foto</th>
                             <th>Estado</th>
                           </tfoot>
@@ -90,10 +88,6 @@ if ($_SESSION['acceso']==1)
                           <div class="form-group col-lg-6 col-md-6 col-sm-6 col-xs-12">
                             <label>Cargo:</label>
                             <input type="text" class="form-control" name="cargo" id="cargo" maxlength="20" placeholder="Cargo">
-                          </div>
-                          <div class="form-group col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                            <label>Login (*):</label>
-                            <input type="text" class="form-control" name="login" id="login" maxlength="20" placeholder="Login" required>
                           </div>
                           <div class="form-group col-lg-6 col-md-6 col-sm-6 col-xs-12">
                             <label>Clave (*):</label>

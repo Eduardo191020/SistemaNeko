@@ -15,7 +15,6 @@ $direccion=isset($_POST["direccion"])? limpiarCadena($_POST["direccion"]):"";
 $telefono=isset($_POST["telefono"])? limpiarCadena($_POST["telefono"]):"";
 $email=isset($_POST["email"])? limpiarCadena($_POST["email"]):"";
 $cargo=isset($_POST["cargo"])? limpiarCadena($_POST["cargo"]):"";
-$login=isset($_POST["login"])? limpiarCadena($_POST["login"]):"";
 $clave=isset($_POST["clave"])? limpiarCadena($_POST["clave"]):"";
 $imagen=isset($_POST["imagen"])? limpiarCadena($_POST["imagen"]):"";
 
@@ -47,11 +46,11 @@ switch ($_GET["op"]){
 				$clavehash=hash("SHA256",$clave);
 
 				if (empty($idusuario)){
-					$rspta=$usuario->insertar($nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$login,$clavehash,$imagen,$_POST['permiso']);
+					$rspta=$usuario->insertar($nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clavehash,$imagen,$_POST['permiso']);
 					echo $rspta ? "Usuario registrado" : "No se pudieron registrar todos los datos del usuario";
 				}
 				else {
-					$rspta=$usuario->editar($idusuario,$nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$login,$clavehash,$imagen,$_POST['permiso']);
+					$rspta=$usuario->editar($idusuario,$nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clavehash,$imagen,$_POST['permiso']);
 					echo $rspta ? "Usuario actualizado" : "Usuario no se pudo actualizar";
 				}
 			//Fin de las validaciones de acceso
@@ -152,9 +151,8 @@ switch ($_GET["op"]){
 		 				"3"=>$reg->num_documento,
 		 				"4"=>$reg->telefono,
 		 				"5"=>$reg->email,
-		 				"6"=>$reg->login,
-		 				"7"=>"<img src='../files/usuarios/".$reg->imagen."' height='50px' width='50px' >",
-		 				"8"=>($reg->condicion)?'<span class="label bg-green">Activado</span>':
+		 				"6"=>"<img src='../files/usuarios/".$reg->imagen."' height='50px' width='50px' >",
+		 				"7"=>($reg->condicion)?'<span class="label bg-green">Activado</span>':
 		 				'<span class="label bg-red">Desactivado</span>'
 		 				);
 		 		}
