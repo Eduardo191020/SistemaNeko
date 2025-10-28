@@ -11,11 +11,14 @@ Class Usuario
 	}
 
 	//Implementamos un método para insertar registros
-	public function insertar($nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$login,$clave,$imagen,$permisos)
+	public function insertar($nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clave,$imagen,$permisos)
 	{
+		// ⭐ El login ahora es automáticamente la parte antes del @ del email
+		$login = explode('@', $email)[0];
+		
 		$sql="INSERT INTO usuario (nombre,tipo_documento,num_documento,direccion,telefono,email,cargo,login,clave,imagen,condicion)
 		VALUES ('$nombre','$tipo_documento','$num_documento','$direccion','$telefono','$email','$cargo','$login','$clave','$imagen','1')";
-		//return ejecutarConsulta($sql);
+		
 		$idusuarionew=ejecutarConsulta_retornarID($sql);
 
 		$num_elementos=0;
@@ -32,8 +35,11 @@ Class Usuario
 	}
 
 	//Implementamos un método para editar registros
-	public function editar($idusuario,$nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$login,$clave,$imagen,$permisos)
+	public function editar($idusuario,$nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clave,$imagen,$permisos)
 	{
+		// ⭐ Actualizar login automáticamente desde el email
+		$login = explode('@', $email)[0];
+		
 		$sql="UPDATE usuario SET nombre='$nombre',tipo_documento='$tipo_documento',num_documento='$num_documento',direccion='$direccion',telefono='$telefono',email='$email',cargo='$cargo',login='$login',clave='$clave',imagen='$imagen' WHERE idusuario='$idusuario'";
 		ejecutarConsulta($sql);
 
@@ -52,7 +58,6 @@ Class Usuario
 		}
 
 		return $sw;
-
 	}
 
 	//Implementamos un método para desactivar categorías
@@ -79,9 +84,10 @@ Class Usuario
 	//Implementar un método para listar los registros
 	public function listar()
 	{
-		$sql="SELECT * FROM usuario";
+		$sql="SELECT * FROM usuario ORDER BY idusuario DESC";
 		return ejecutarConsulta($sql);		
 	}
+	
 	//Implementar un método para listar los permisos marcados
 	public function listarmarcados($idusuario)
 	{
@@ -90,10 +96,43 @@ Class Usuario
 	}
 
 	//Función para verificar el acceso al sistema
+	// ⭐ IMPORTANTE: Ahora permite login con EMAIL o con LOGIN (usuario)
 	public function verificar($login,$clave)
     {
-    	$sql="SELECT idusuario,nombre,tipo_documento,num_documento,telefono,email,cargo,imagen,login FROM usuario WHERE login='$login' AND clave='$clave' AND condicion='1'"; 
+    	$sql="SELECT idusuario,nombre,tipo_documento,num_documento,telefono,email,cargo,imagen,login 
+    	      FROM usuario 
+    	      WHERE (login='$login' OR email='$login') 
+    	      AND clave='$clave' 
+    	      AND condicion='1'"; 
     	return ejecutarConsulta($sql);  
+    }
+    
+    //Función para verificar si el email ya existe (para evitar duplicados)
+    public function verificarEmailExiste($email, $idusuario = 0)
+    {
+        if ($idusuario > 0) {
+            // Al editar, excluir el usuario actual
+            $sql = "SELECT idusuario FROM usuario WHERE email='$email' AND idusuario != '$idusuario' LIMIT 1";
+        } else {
+            // Al crear, verificar que no exista
+            $sql = "SELECT idusuario FROM usuario WHERE email='$email' LIMIT 1";
+        }
+        $result = ejecutarConsultaSimpleFila($sql);
+        return ($result !== false); // true si existe, false si no existe
+    }
+    
+    //Función para verificar si el documento ya existe (para evitar duplicados)
+    public function verificarDocumentoExiste($tipo_documento, $num_documento, $idusuario = 0)
+    {
+        if ($idusuario > 0) {
+            // Al editar, excluir el usuario actual
+            $sql = "SELECT idusuario FROM usuario WHERE tipo_documento='$tipo_documento' AND num_documento='$num_documento' AND idusuario != '$idusuario' LIMIT 1";
+        } else {
+            // Al crear, verificar que no exista
+            $sql = "SELECT idusuario FROM usuario WHERE tipo_documento='$tipo_documento' AND num_documento='$num_documento' LIMIT 1";
+        }
+        $result = ejecutarConsultaSimpleFila($sql);
+        return ($result !== false); // true si existe, false si no existe
     }
 }
 

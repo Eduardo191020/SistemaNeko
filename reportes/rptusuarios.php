@@ -40,7 +40,7 @@ $pdf->Cell(20,6,'Documento',1,0,'C',1);
 $pdf->Cell(22,6,utf8_decode('Número'),1,0,'C',1);
 $pdf->Cell(25,6,utf8_decode('Teléfono'),1,0,'C',1);
 $pdf->Cell(46,6,'Email',1,0,'C',1);
-$pdf->Cell(32,6,utf8_decode('Login'),1,0,'C',1);
+$pdf->Cell(32,6,'Cargo',1,0,'C',1);
  
 $pdf->Ln(10);
 //Comenzamos a crear las filas de los registros según la consulta mysql
@@ -59,10 +59,9 @@ while($reg= $rspta->fetch_object())
     $num_documento = $reg->num_documento;
     $telefono = $reg->telefono;
     $email =$reg->email;
-    $login =$reg->login;
- 	
- 	$pdf->SetFont('Arial','',10);
-    $pdf->Row(array(utf8_decode($nombre),$tipo_documento,$num_documento,$telefono,$email,utf8_decode($login)));
+    $cargo = $reg->cargo;
+    $pdf->SetFont('Arial','',10);
+    $pdf->Row(array(utf8_decode($nombre),$tipo_documento,$num_documento,$telefono,$email,utf8_decode($cargo)));
 }
  
 //Mostramos el documento pdf

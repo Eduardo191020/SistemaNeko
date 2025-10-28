@@ -29,6 +29,51 @@ switch ($_GET["op"]){
 			//Validamos el acceso solo al usuario logueado y autorizado.
 			if ($_SESSION['almacen']==1)
 			{
+				// ⭐ VALIDACIONES ANTES DE GUARDAR
+				
+				// 1. Validar que el email no esté duplicado
+				if ($usuario->verificarEmailExiste($email, $idusuario)) {
+					echo "Error: Este correo electrónico ya está registrado por otro usuario.";
+					break;
+				}
+				
+				// 2. Validar que el documento no esté duplicado
+				if ($usuario->verificarDocumentoExiste($tipo_documento, $num_documento, $idusuario)) {
+					echo "Error: Este documento ya está registrado por otro usuario.";
+					break;
+				}
+				
+				// 3. Validar formato de email
+				if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					echo "Error: El formato del correo electrónico no es válido.";
+					break;
+				}
+				
+				// 4. Validar longitud de contraseña
+				if (strlen($clave) < 10 || strlen($clave) > 64) {
+					echo "Error: La contraseña debe tener entre 10 y 64 caracteres.";
+					break;
+				}
+				
+				// 5. Validar que tenga al menos un permiso seleccionado
+				if (!isset($_POST['permiso']) || count($_POST['permiso']) == 0) {
+					echo "Error: Debes seleccionar al menos un permiso para el usuario.";
+					break;
+				}
+				
+				// 6. Asignar cargo automáticamente según permisos (opcional pero recomendado)
+				// Si no se especificó cargo o está vacío, asignarlo según el rol/permisos
+				if (empty($cargo)) {
+					// Verificar si tiene permiso de "Acceso" (id_permiso = 5, que suele ser administrador)
+					if (in_array(5, $_POST['permiso'])) {
+						$cargo = 'Administrador';
+					} else {
+						// Por defecto vendedor si no se especificó
+						$cargo = 'Vendedor';
+					}
+				}
+				
+				// Procesar imagen
 				if (!file_exists($_FILES['imagen']['tmp_name']) || !is_uploaded_file($_FILES['imagen']['tmp_name']))
 				{
 					$imagen=$_POST["imagenactual"];
@@ -42,16 +87,19 @@ switch ($_GET["op"]){
 						move_uploaded_file($_FILES["imagen"]["tmp_name"], "../files/usuarios/" . $imagen);
 					}
 				}
+				
 				//Hash SHA256 en la contraseña
 				$clavehash=hash("SHA256",$clave);
 
 				if (empty($idusuario)){
+					// INSERTAR NUEVO USUARIO
 					$rspta=$usuario->insertar($nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clavehash,$imagen,$_POST['permiso']);
-					echo $rspta ? "Usuario registrado" : "No se pudieron registrar todos los datos del usuario";
+					echo $rspta ? "Usuario registrado exitosamente. Puede iniciar sesión con su correo: $email" : "No se pudieron registrar todos los datos del usuario";
 				}
 				else {
+					// EDITAR USUARIO EXISTENTE
 					$rspta=$usuario->editar($idusuario,$nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clavehash,$imagen,$_POST['permiso']);
-					echo $rspta ? "Usuario actualizado" : "Usuario no se pudo actualizar";
+					echo $rspta ? "Usuario actualizado correctamente" : "Usuario no se pudo actualizar";
 				}
 			//Fin de las validaciones de acceso
 			}
@@ -151,8 +199,9 @@ switch ($_GET["op"]){
 		 				"3"=>$reg->num_documento,
 		 				"4"=>$reg->telefono,
 		 				"5"=>$reg->email,
-		 				"6"=>"<img src='../files/usuarios/".$reg->imagen."' height='50px' width='50px' >",
-		 				"7"=>($reg->condicion)?'<span class="label bg-green">Activado</span>':
+		 				"6"=>$reg->cargo,
+		 				"7"=>"<img src='../files/usuarios/".$reg->imagen."' height='50px' width='50px' >",
+		 				"8"=>($reg->condicion)?'<span class="label bg-green">Activado</span>':
 		 				'<span class="label bg-red">Desactivado</span>'
 		 				);
 		 		}
@@ -193,7 +242,7 @@ switch ($_GET["op"]){
 		while ($reg = $rspta->fetch_object())
 				{
 					$sw=in_array($reg->idpermiso,$valores)?'checked':'';
-					echo '<li> <input type="checkbox" '.$sw.'  name="permiso[]" value="'.$reg->idpermiso.'">'.$reg->nombre.'</li>';
+					echo '<li> <input type="checkbox" '.$sw.'  name="permiso[]" value="'.$reg->idpermiso.'"> '.$reg->nombre.'</li>';
 				}
 	break;
 
@@ -204,6 +253,7 @@ switch ($_GET["op"]){
 	    //Hash SHA256 en la contraseña
 		$clavehash=hash("SHA256",$clavea);
 
+		// ⭐ Ahora permite login con EMAIL o con LOGIN (usuario)
 		$rspta=$usuario->verificar($logina, $clavehash);
 
 		$fetch=$rspta->fetch_object();
@@ -215,6 +265,7 @@ switch ($_GET["op"]){
 	        $_SESSION['nombre']=$fetch->nombre;
 	        $_SESSION['imagen']=$fetch->imagen;
 	        $_SESSION['login']=$fetch->login;
+	        $_SESSION['email']=$fetch->email; // ⭐ Agregamos email a la sesión
 
 	        //Obtenemos los permisos del usuario
 	    	$marcados = $usuario->listarmarcados($fetch->idusuario);
@@ -244,7 +295,7 @@ switch ($_GET["op"]){
 	case 'salir':
 		//Limpiamos las variables de sesión   
         session_unset();
-        //Destruìmos la sesión
+        //Destruímos la sesión
         session_destroy();
         //Redireccionamos al login
         header("Location: ../index.php");
