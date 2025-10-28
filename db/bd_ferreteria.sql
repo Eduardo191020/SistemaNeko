@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 27-10-2025 a las 01:42:41
+-- Tiempo de generación: 29-10-2025 a las 00:36:38
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.0.30
 
@@ -312,6 +312,7 @@ CREATE TABLE `usuario` (
   `direccion` varchar(70) DEFAULT NULL,
   `telefono` varchar(20) DEFAULT NULL,
   `email` varchar(50) DEFAULT NULL,
+  `cargo` varchar(20) DEFAULT NULL,
   `clave` varchar(64) NOT NULL,
   `imagen` varchar(50) NOT NULL,
   `condicion` tinyint(1) NOT NULL DEFAULT 1
@@ -321,12 +322,12 @@ CREATE TABLE `usuario` (
 -- Volcado de datos para la tabla `usuario`
 --
 
-INSERT INTO `usuario` (`idusuario`, `id_tipodoc`, `id_rol`, `nombre`, `tipo_documento`, `num_documento`, `direccion`, `telefono`, `email`, `clave`, `imagen`, `condicion`) VALUES
-(3, 1, 2, 'WALTER ELEONEL GIL TERRONES', '', '16617373', 'Eleodoro Coral 270', '966853147', 'serg.dangr@hotmail.com', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
-(4, 2, 3, 'BOTICAS IP S.A.C.', '', '20608430301', 'Eleodoro Coral 270', '966853147', 'serg.el_crack@hotmail.com', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
-(5, 1, 1, 'CRISTIAN MANFREDY DAVILA VALLE', 'DNI', '74134653', 'Barcelona 210 Urb San Juan', '932 375 500', 'cristiandavilavalle@gmail.com', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '1760918574.jpg', 1),
-(6, 1, 1, 'CARLOS JHEREMY SERPA CORTEZ', '', '74417406', 'San juan', '975475942', 'cjsc2002.2002@gmail.com', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '', 1),
-(12, 1, 2, 'JOSE EDUARDO ANGELES BRAVO', '', '72928002', '', '940367492', 'darkedu1019@gmail.com', '1e5aea5231bf2cf071822f24852f8d049c2ee745e3b59ce505f6f2160f2ddd2d', '', 1);
+INSERT INTO `usuario` (`idusuario`, `id_tipodoc`, `id_rol`, `nombre`, `tipo_documento`, `num_documento`, `direccion`, `telefono`, `email`, `cargo`, `clave`, `imagen`, `condicion`) VALUES
+(3, 1, 2, 'WALTER ELEONEL GIL TERRONES', 'DNI', '16617373', 'Eleodoro Coral 270', '966853147', 'serg.dangr@hotmail.com', 'Vendedor', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
+(4, 2, 3, 'BOTICAS IP S.A.C.', 'RUC', '20608430301', 'Eleodoro Coral 270', '966853147', 'serg.el_crack@hotmail.com', 'Vendedor', 'd72a1fbc9c45afcc09c2978678d69a619f9bc68c5666d58a0b61529ab076e939', '', 1),
+(5, 1, 1, 'CRISTIAN MANFREDY DAVILA VALLE', 'DNI', '74134653', 'Barcelona 210 Urb San Juan', '932 375 500', 'cristiandavilavalle@gmail.com', 'Administrador', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '1760918574.jpg', 1),
+(6, 1, 1, 'CARLOS JHEREMY SERPA CORTEZ', 'DNI', '74417406', 'San juan', '975475942', 'cjsc2002.2002@gmail.com', 'Administrador', '4d89268f653c0c7b28414f760f12200f37c726e22c0b8577c75612568bfce99f', '', 1),
+(12, 1, 1, 'JOSE EDUARDO ANGELES BRAVO', 'DNI', '72928002', '', '940367492', 'darkedu1019@gmail.com', 'Administrador', '1e5aea5231bf2cf071822f24852f8d049c2ee745e3b59ce505f6f2160f2ddd2d', '', 1);
 
 -- --------------------------------------------------------
 
@@ -539,7 +540,7 @@ ALTER TABLE `rol_usuarios`
 -- AUTO_INCREMENT de la tabla `user_otp`
 --
 ALTER TABLE `user_otp`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
