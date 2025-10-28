@@ -57,18 +57,26 @@ function validar_patron_email(string $email): ?string {
     }
   }
   
-  // 4. Verificar vocales (correos reales suelen tener vocales)
-  $vocales = preg_match_all('/[aeiou]/', $local);
-  $total = strlen($local);
+  // 4. Verificar diversidad de caracteres (solo si NO tiene números/puntos/guiones)
+  // Si tiene números o símbolos válidos, es más probable que sea real
+  $tiene_numeros = preg_match('/[0-9]/', $local);
+  $tiene_simbolos = preg_match('/[._\-]/', $local);
   
-  if ($total > 8 && $vocales === 0) {
-    return 'El correo parece no ser válido (sin vocales)';
-  }
-  
-  // 5. Verificar diversidad de caracteres
-  $caracteres_unicos = count(array_unique(str_split($local)));
-  if ($total > 6 && $caracteres_unicos <= 3) {
-    return 'El correo tiene un patrón demasiado repetitivo';
+  // Solo validar vocales si NO tiene números ni símbolos (correos puramente alfabéticos)
+  if (!$tiene_numeros && !$tiene_simbolos) {
+    $vocales = preg_match_all('/[aeiou]/', $local);
+    $total_letras = strlen(preg_replace('/[^a-z]/', '', $local));
+    
+    // Si es todo letras y muy largo sin vocales, es sospechoso
+    if ($total_letras > 8 && $vocales === 0) {
+      return 'El correo parece no ser válido (sin vocales)';
+    }
+    
+    // Verificar diversidad de caracteres solo en correos alfabéticos
+    $caracteres_unicos = count(array_unique(str_split($local)));
+    if (strlen($local) > 6 && $caracteres_unicos <= 3) {
+      return 'El correo tiene un patrón demasiado repetitivo';
+    }
   }
   
   // 6. Verificar secuencias consecutivas (abcdef, 123456)
@@ -315,11 +323,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Inserción en BD (login se genera automáticamente)
             $ins = $pdo->prepare('
               INSERT INTO usuario
-                (id_tipodoc, num_documento, id_rol, nombre, email, clave, telefono, direccion, condicion)
+                (id_tipodoc, num_documento, id_rol, nombre, email, login, clave, telefono, direccion, condicion)
               VALUES
-                (?,          ?,              ?,      ?,      ?,     ?,     ?,        ?,         1)
+                (?,          ?,              ?,      ?,      ?,     ?,     ?,     ?,        ?,         1)
             ');
-            if ($ins->execute([$id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $hash, $telefono, $direccion])) {
+            if ($ins->execute([$id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $loginAuto, $hash, $telefono, $direccion])) {
               $success = 'Registro exitoso. Ahora puedes iniciar sesión con tu correo electrónico.';
               // Limpiar variables
               $id_tipodoc = $id_rol = 0;
@@ -414,7 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <label class="field">
             <span class="field-label">Nro. de documento *</span>
-            <input id="nrodoc" type="input" name="nro_documento" value="<?= htmlspecialchars($nro_documento) ?>" onKeypress="if (event.keyCode < 45 || event.keyCode > 57) event.returnValue = false;" required>
+            <input id="nrodoc" type="text" name="nro_documento" value="<?= htmlspecialchars($nro_documento) ?>" required>
             <small id="hintdoc" class="hint"></small>
           </label>
 
@@ -439,7 +447,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="field">
             <span class="field-label">Correo electrónico *</span>
             <div style="position:relative;">
-              <input id="email" type="email" name="email" value="<?= htmlspecialchars($email) ?>"style="width:100%;" required>
+              <input id="email" type="email" name="email" value="<?= htmlspecialchars($email) ?>" style="width:100%;" required>
               <span id="email-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:1.2rem;"></span>
             </div>
             <small id="email-hint" class="hint">Usarás este correo para iniciar sesión</small>
@@ -447,7 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <label class="field">
             <span class="field-label">Teléfono</span>
-            <input type="input" name="telefono" value="<?= htmlspecialchars($telefono) ?>" placeholder="Máx 9 caracteres" onKeypress="if (event.keyCode < 45 || event.keyCode > 57) event.returnValue = false;" maxlength="9">
+            <input type="text" name="telefono" value="<?= htmlspecialchars($telefono) ?>" placeholder="Opcional (6–20 caracteres)">
           </label>
 
           <label class="field">
@@ -488,7 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="field">
             <span class="field-label">Confirmar contraseña *</span>
             <div class="input-wrap">
-              <input id="pwd2" type="password" name="confirm" style="width:90%;"required>
+              <input id="pwd2" type="password" name="confirm" style="width:90%;" required>
               <span class="input-eye" id="togglePwd2" title="Ver/Ocultar">👁️</span>
             </div>
           </label>

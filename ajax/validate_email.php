@@ -59,22 +59,26 @@ function validar_patron_email(string $email): ?string {
         }
     }
     
-    // 4. Verificar que no sea completamente aleatorio
-    // Un correo real suele tener vocales y consonantes intercaladas
-    $vocales = preg_match_all('/[aeiou]/', $local);
-    $consonantes = preg_match_all('/[bcdfghjklmnpqrstvwxyz]/', $local);
-    $numeros = preg_match_all('/[0-9]/', $local);
-    $total = strlen($local);
+    // 4. Verificar diversidad de caracteres (solo si NO tiene números/puntos/guiones)
+    // Si tiene números o símbolos válidos, es más probable que sea real
+    $tiene_numeros = preg_match('/[0-9]/', $local);
+    $tiene_simbolos = preg_match('/[._\-]/', $local);
     
-    // Si es muy largo y tiene muy pocas vocales, es sospechoso
-    if ($total > 8 && $vocales === 0) {
-        return 'El correo parece no ser válido (sin vocales)';
-    }
-    
-    // Si tiene solo 2-3 caracteres diferentes repetidos (xxxyyy, aaabbb)
-    $caracteres_unicos = count(array_unique(str_split($local)));
-    if ($total > 6 && $caracteres_unicos <= 3) {
-        return 'El correo tiene un patrón demasiado repetitivo';
+    // Solo validar vocales si NO tiene números ni símbolos (correos puramente alfabéticos)
+    if (!$tiene_numeros && !$tiene_simbolos) {
+        $vocales = preg_match_all('/[aeiou]/', $local);
+        $total_letras = strlen(preg_replace('/[^a-z]/', '', $local));
+        
+        // Si es todo letras y muy largo sin vocales, es sospechoso
+        if ($total_letras > 8 && $vocales === 0) {
+            return 'El correo parece no ser válido (sin vocales)';
+        }
+        
+        // Verificar diversidad de caracteres solo en correos alfabéticos
+        $caracteres_unicos = count(array_unique(str_split($local)));
+        if (strlen($local) > 6 && $caracteres_unicos <= 3) {
+            return 'El correo tiene un patrón demasiado repetitivo';
+        }
     }
     
     // 5. Verificar secuencias consecutivas largas (abcdef, 123456)
