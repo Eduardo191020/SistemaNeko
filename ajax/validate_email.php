@@ -1,14 +1,10 @@
 <?php
-// ajax/validate_email.php
+// ajax/validate_email.php - CON API EXTERNA
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
-// Solo aceptar peticiones AJAX
-if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) || $_SERVER['HTTP_X_REQUESTED_WITH'] !== 'XMLHttpRequest') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Acceso denegado']);
-    exit;
-}
+// DEBUG
+error_log('=== VALIDATE EMAIL API ===');
 
 $email = trim($_GET['email'] ?? '');
 
@@ -17,204 +13,188 @@ if (empty($email)) {
     exit;
 }
 
-/**
- * Valida que el correo no tenga patrones sospechosos
- */
-function validar_patron_email(string $email): ?string {
-    $partes = explode('@', $email);
-    if (count($partes) !== 2) {
-        return 'Formato de email inválido';
-    }
-    
-    $local = strtolower($partes[0]);
-    $domain = strtolower($partes[1]);
-    
-    // 1. Longitud mínima del local (antes del @)
-    if (strlen($local) < 3) {
-        return 'El nombre de usuario es demasiado corto (mín. 3 caracteres)';
-    }
-    
-    // 2. Detectar secuencias repetitivas sospechosas (aaaa, xxxx, 1111)
-    if (preg_match('/(.)\1{3,}/', $local)) {
-        return 'El correo contiene caracteres repetitivos sospechosos';
-    }
-    
-    // 3. Detectar patrones aleatorios comunes
-    // Patrones como: asdfgh, qwerty, abcdef, 123456, xxxxyyy, etc.
-    $patrones_sospechosos = [
-        '/^[a-z]{3}\d{3,}$/',           // abc123, xyz789
-        '/^[a-z]{6,}$/',                 // asdfgh, qwerty (solo letras consecutivas)
-        '/^\d{4,}$/',                    // 12345, 67890 (solo números)
-        '/^(x+|y+|z+|a+)(x+|y+|z+|a+)/', // xxx, yyy, xxxyyy, aaabbb
-        '/^test\d*$/',                   // test, test1, test123
-        '/^user\d*$/',                   // user, user1, user123
-        '/^admin\d*$/',                  // admin, admin1
-        '/^demo\d*$/',                   // demo, demo1
-        '/^(abc|xyz|qwe|asd|zxc)\d*$/', // abc123, xyz456
-    ];
-    
-    foreach ($patrones_sospechosos as $patron) {
-        if (preg_match($patron, $local)) {
-            return 'El correo parece ser generado aleatoriamente o de prueba';
-        }
-    }
-    
-    // 4. Verificar diversidad de caracteres (solo si NO tiene números/puntos/guiones)
-    // Si tiene números o símbolos válidos, es más probable que sea real
-    $tiene_numeros = preg_match('/[0-9]/', $local);
-    $tiene_simbolos = preg_match('/[._\-]/', $local);
-    
-    // Solo validar vocales si NO tiene números ni símbolos (correos puramente alfabéticos)
-    if (!$tiene_numeros && !$tiene_simbolos) {
-        $vocales = preg_match_all('/[aeiou]/', $local);
-        $total_letras = strlen(preg_replace('/[^a-z]/', '', $local));
-        
-        // Si es todo letras y muy largo sin vocales, es sospechoso
-        if ($total_letras > 8 && $vocales === 0) {
-            return 'El correo parece no ser válido (sin vocales)';
-        }
-        
-        // Verificar diversidad de caracteres solo en correos alfabéticos
-        $caracteres_unicos = count(array_unique(str_split($local)));
-        if (strlen($local) > 6 && $caracteres_unicos <= 3) {
-            return 'El correo tiene un patrón demasiado repetitivo';
-        }
-    }
-    
-    // 5. Verificar secuencias consecutivas largas (abcdef, 123456)
-    for ($i = 0; $i < strlen($local) - 3; $i++) {
-        $seq = substr($local, $i, 4);
-        // Verificar si son 4 caracteres consecutivos en el alfabeto
-        if (preg_match('/^[a-z]+$/', $seq)) {
-            $consecutivos = true;
-            for ($j = 1; $j < strlen($seq); $j++) {
-                if (ord($seq[$j]) !== ord($seq[$j-1]) + 1) {
-                    $consecutivos = false;
-                    break;
-                }
-            }
-            if ($consecutivos) {
-                return 'El correo contiene secuencias alfabéticas sospechosas';
-            }
-        }
-        // Verificar si son 4 números consecutivos
-        if (preg_match('/^\d+$/', $seq)) {
-            $consecutivos = true;
-            for ($j = 1; $j < strlen($seq); $j++) {
-                if ((int)$seq[$j] !== (int)$seq[$j-1] + 1) {
-                    $consecutivos = false;
-                    break;
-                }
-            }
-            if ($consecutivos) {
-                return 'El correo contiene secuencias numéricas sospechosas';
-            }
-        }
-    }
-    
-    // 6. Lista de nombres comunes falsos
-    $nombres_falsos = [
-        'asdasd', 'asdfgh', 'qwerty', 'qwertyui', 'zxcvbn',
-        'testtest', 'test123', 'prueba', 'ejemplo',
-        'xxxyyy', 'aaabbb', 'noname', 'random', 'fake',
-        'temporal', 'temp', 'basura', 'spam'
-    ];
-    
-    foreach ($nombres_falsos as $falso) {
-        if (strpos($local, $falso) !== false) {
-            return 'El correo parece ser temporal o de prueba';
-        }
-    }
-    
-    return null; // Patrón válido
+// 1. Validación de formato básico
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    echo json_encode([
+        'success' => false,
+        'valid' => false,
+        'message' => 'El formato del correo no es válido'
+    ]);
+    exit;
 }
 
-/**
- * Valida que el correo sea real y accesible
- */
-function validar_email_completo(string $email): array {
-    // 1. Validación de formato básico
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        return [
-            'success' => false,
-            'valid' => false,
-            'message' => 'El formato del correo no es válido'
-        ];
+error_log("Validando email: $email");
+
+// 2. OPCIÓN A: AbstractAPI (100 gratis/mes)
+// Regístrate en: https://app.abstractapi.com/users/signup
+// Obtén tu API key gratis
+$ABSTRACT_API_KEY = 'd14097ba1a3e48d585e0f0a395deab55'; // ⭐ REEMPLAZA ESTO
+
+// 3. OPCIÓN B: Validación local mejorada (si no tienes API key)
+$usar_api = !empty($ABSTRACT_API_KEY) && $ABSTRACT_API_KEY !== 'd14097ba1a3e48d585e0f0a395deab55';
+
+if ($usar_api) {
+    // ========== VALIDACIÓN CON API EXTERNA ==========
+    $api_url = "https://emailvalidation.abstractapi.com/v1/?api_key={$ABSTRACT_API_KEY}&email=" . urlencode($email);
+    
+    $ch = curl_init($api_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200 && $response) {
+        $data = json_decode($response, true);
+        
+        error_log("Respuesta API: " . print_r($data, true));
+        
+        // Analizar respuesta de AbstractAPI
+        $is_valid_format = $data['is_valid_format']['value'] ?? false;
+        $is_mx_found = $data['is_mx_found']['value'] ?? false;
+        $is_smtp_valid = $data['is_smtp_valid']['value'] ?? false;
+        $is_disposable = $data['is_disposable_email']['value'] ?? false;
+        $is_free_email = $data['is_free_email']['value'] ?? false;
+        $quality_score = $data['quality_score'] ?? 0;
+        
+        // Validaciones
+        if (!$is_valid_format) {
+            echo json_encode([
+                'success' => false,
+                'valid' => false,
+                'message' => 'El formato del correo no es válido'
+            ]);
+            exit;
+        }
+        
+        if ($is_disposable) {
+            echo json_encode([
+                'success' => false,
+                'valid' => false,
+                'message' => 'No se permiten correos temporales o desechables'
+            ]);
+            exit;
+        }
+        
+        if (!$is_mx_found) {
+            echo json_encode([
+                'success' => false,
+                'valid' => false,
+                'message' => 'El dominio del correo no existe o no puede recibir emails'
+            ]);
+            exit;
+        }
+        
+        // Si el quality_score es muy bajo, rechazar
+        if ($quality_score < 0.5) {
+            echo json_encode([
+                'success' => false,
+                'valid' => false,
+                'message' => 'El correo no parece ser válido o confiable'
+            ]);
+            exit;
+        }
+        
+        // ✅ Email válido
+        echo json_encode([
+            'success' => true,
+            'valid' => true,
+            'verified' => $is_smtp_valid,
+            'is_free' => $is_free_email,
+            'quality_score' => $quality_score,
+            'message' => 'Correo verificado como válido'
+        ]);
+        exit;
+        
+    } else {
+        error_log("Error API: HTTP $http_code - $response");
+        // Si falla la API, usar validación local
     }
-    
-    // 2. Validar patrones sospechosos
-    $error_patron = validar_patron_email($email);
-    if ($error_patron !== null) {
-        return [
-            'success' => false,
-            'valid' => false,
-            'message' => $error_patron
-        ];
-    }
-    
-    // 3. Extraer dominio
-    $parts = explode('@', $email);
-    if (count($parts) !== 2) {
-        return [
-            'success' => false,
-            'valid' => false,
-            'message' => 'El correo no tiene un formato válido'
-        ];
-    }
-    
-    $domain = $parts[1];
-    
-    // 4. Verificar que el dominio tenga registros MX o A
-    $has_mx = checkdnsrr($domain, 'MX');
-    $has_a = checkdnsrr($domain, 'A');
+}
+
+// ========== VALIDACIÓN LOCAL (FALLBACK O SI NO HAY API) ==========
+
+// Extraer dominio
+$parts = explode('@', $email);
+if (count($parts) !== 2) {
+    echo json_encode([
+        'success' => false,
+        'valid' => false,
+        'message' => 'El correo no tiene un formato válido'
+    ]);
+    exit;
+}
+
+$local = strtolower($parts[0]);
+$domain = strtolower($parts[1]);
+
+// Lista de dominios desechables
+$disposable_domains = [
+    'tempmail.com', 'guerrillamail.com', '10minutemail.com', 
+    'throwaway.email', 'mailinator.com', 'trashmail.com', 
+    'yopmail.com', 'maildrop.cc', 'temp-mail.org',
+    'fakeinbox.com', 'sharklasers.com'
+];
+
+if (in_array($domain, $disposable_domains)) {
+    echo json_encode([
+        'success' => false,
+        'valid' => false,
+        'message' => 'No se permiten correos temporales o desechables'
+    ]);
+    exit;
+}
+
+// Verificar DNS (con bypass para dominios conocidos)
+$dominios_conocidos = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'msn.com'];
+$es_dominio_conocido = in_array($domain, $dominios_conocidos);
+
+if (!$es_dominio_conocido) {
+    $has_mx = @checkdnsrr($domain, 'MX');
+    $has_a = @checkdnsrr($domain, 'A');
     
     if (!$has_mx && !$has_a) {
-        return [
+        echo json_encode([
             'success' => false,
             'valid' => false,
             'message' => 'El dominio del correo no existe o no puede recibir emails'
-        ];
+        ]);
+        exit;
     }
-    
-    // 5. Lista de dominios desechables/temporales
-    $disposable_domains = [
-        'tempmail.com', 'guerrillamail.com', '10minutemail.com', 
-        'throwaway.email', 'mailinator.com', 'trashmail.com', 
-        'yopmail.com', 'maildrop.cc', 'temp-mail.org',
-        'fakeinbox.com', 'sharklasers.com', 'guerrillamailblock.com',
-        'pokemail.net', 'spam4.me', 'grr.la', 'dispostable.com',
-        'tempinbox.com', 'minuteinbox.com', 'emailondeck.com',
-        'mytemp.email', 'mohmal.com', 'moakt.com'
-    ];
-    
-    if (in_array(strtolower($domain), $disposable_domains, true)) {
-        return [
-            'success' => false,
-            'valid' => false,
-            'message' => 'No se permiten correos temporales o desechables'
-        ];
-    }
-    
-    // 6. Verificar dominios populares conocidos
-    $trusted_domains = [
-        'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com',
-        'icloud.com', 'protonmail.com', 'live.com', 'msn.com',
-        'aol.com', 'zoho.com', 'mail.com', 'gmx.com'
-    ];
-    
-    $is_trusted = in_array(strtolower($domain), $trusted_domains, true);
-    
-    return [
-        'success' => true,
-        'valid' => true,
-        'verified' => $has_mx,
-        'trusted' => $is_trusted,
-        'message' => $is_trusted 
-            ? 'Correo verificado como válido' 
-            : 'Correo válido (dominio verificado)'
-    ];
 }
 
-// Ejecutar validación
-$resultado = validar_email_completo($email);
-echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
+// Validaciones simples de patrón (solo casos muy obvios)
+$patrones_invalidos = [
+    '/^test\d*$/i',      // test, test123
+    '/^user\d*$/i',      // user123
+    '/^admin\d*$/i',     // admin123
+    '/^demo\d*$/i',      // demo123
+    '/^spam\d*$/i',      // spam123
+    '/^(xxx|yyy|zzz){2,}/', // xxxyyy, yyyzzz
+];
+
+foreach ($patrones_invalidos as $patron) {
+    if (preg_match($patron, $local)) {
+        echo json_encode([
+            'success' => false,
+            'valid' => false,
+            'message' => 'El correo parece ser de prueba o no válido'
+        ]);
+        exit;
+    }
+}
+
+// ✅ Email válido (validación local)
+echo json_encode([
+    'success' => true,
+    'valid' => true,
+    'verified' => $es_dominio_conocido,
+    'trusted' => $es_dominio_conocido,
+    'message' => $es_dominio_conocido 
+        ? 'Correo verificado como válido' 
+        : 'Correo válido (dominio verificado)'
+]);
