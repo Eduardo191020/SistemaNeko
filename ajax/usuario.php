@@ -1,7 +1,7 @@
 <?php
 ob_start();
 if (strlen(session_id()) < 1){
-	session_start();//Validamos si existe o no la sesión
+	session_start();
 }
 require_once "../modelos/Usuario.php";
 
@@ -22,54 +22,49 @@ switch ($_GET["op"]){
 	case 'guardaryeditar':
 		if (!isset($_SESSION["nombre"]))
 		{
-		  header("Location: ../vistas/login.html");//Validamos el acceso solo a los usuarios logueados al sistema.
+		  header("Location: ../vistas/login.html");
 		}
 		else
 		{
-			//Validamos el acceso solo al usuario logueado y autorizado.
-			if ($_SESSION['almacen']==1)
+			// ✅ Verificar permiso de Acceso (gestión de usuarios)
+			if ($_SESSION['acceso']==1)
 			{
-				// ⭐ VALIDACIONES ANTES DE GUARDAR
+				// VALIDACIONES
 				
-				// 1. Validar que el email no esté duplicado
 				if ($usuario->verificarEmailExiste($email, $idusuario)) {
 					echo "Error: Este correo electrónico ya está registrado por otro usuario.";
 					break;
 				}
 				
-				// 2. Validar que el documento no esté duplicado
 				if ($usuario->verificarDocumentoExiste($tipo_documento, $num_documento, $idusuario)) {
 					echo "Error: Este documento ya está registrado por otro usuario.";
 					break;
 				}
 				
-				// 3. Validar formato de email
 				if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 					echo "Error: El formato del correo electrónico no es válido.";
 					break;
 				}
 				
-				// 4. Validar longitud de contraseña
 				if (strlen($clave) < 10 || strlen($clave) > 64) {
 					echo "Error: La contraseña debe tener entre 10 y 64 caracteres.";
 					break;
 				}
 				
-				// 5. Validar que tenga al menos un permiso seleccionado
 				if (!isset($_POST['permiso']) || count($_POST['permiso']) == 0) {
 					echo "Error: Debes seleccionar al menos un permiso para el usuario.";
 					break;
 				}
 				
-				// 6. Asignar cargo automáticamente según permisos (opcional pero recomendado)
-				// Si no se especificó cargo o está vacío, asignarlo según el rol/permisos
 				if (empty($cargo)) {
-					// Verificar si tiene permiso de "Acceso" (id_permiso = 5, que suele ser administrador)
 					if (in_array(5, $_POST['permiso'])) {
 						$cargo = 'Administrador';
-					} else {
-						// Por defecto vendedor si no se especificó
+					} elseif (in_array(2, $_POST['permiso']) && in_array(3, $_POST['permiso'])) {
+						$cargo = 'Almacenero';
+					} elseif (in_array(4, $_POST['permiso'])) {
 						$cargo = 'Vendedor';
+					} else {
+						$cargo = 'Empleado';
 					}
 				}
 				
@@ -88,20 +83,16 @@ switch ($_GET["op"]){
 					}
 				}
 				
-				//Hash SHA256 en la contraseña
 				$clavehash=hash("SHA256",$clave);
 
 				if (empty($idusuario)){
-					// INSERTAR NUEVO USUARIO
 					$rspta=$usuario->insertar($nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clavehash,$imagen,$_POST['permiso']);
 					echo $rspta ? "Usuario registrado exitosamente. Puede iniciar sesión con su correo: $email" : "No se pudieron registrar todos los datos del usuario";
 				}
 				else {
-					// EDITAR USUARIO EXISTENTE
 					$rspta=$usuario->editar($idusuario,$nombre,$tipo_documento,$num_documento,$direccion,$telefono,$email,$cargo,$clavehash,$imagen,$_POST['permiso']);
 					echo $rspta ? "Usuario actualizado correctamente" : "Usuario no se pudo actualizar";
 				}
-			//Fin de las validaciones de acceso
 			}
 			else
 			{
@@ -113,16 +104,14 @@ switch ($_GET["op"]){
 	case 'desactivar':
 		if (!isset($_SESSION["nombre"]))
 		{
-		  header("Location: ../vistas/login.html");//Validamos el acceso solo a los usuarios logueados al sistema.
+		  header("Location: ../vistas/login.html");
 		}
 		else
 		{
-			//Validamos el acceso solo al usuario logueado y autorizado.
-			if ($_SESSION['almacen']==1)
+			if ($_SESSION['acceso']==1)
 			{
 				$rspta=$usuario->desactivar($idusuario);
  				echo $rspta ? "Usuario Desactivado" : "Usuario no se puede desactivar";
-			//Fin de las validaciones de acceso
 			}
 			else
 			{
@@ -134,16 +123,14 @@ switch ($_GET["op"]){
 	case 'activar':
 		if (!isset($_SESSION["nombre"]))
 		{
-		  header("Location: ../vistas/login.html");//Validamos el acceso solo a los usuarios logueados al sistema.
+		  header("Location: ../vistas/login.html");
 		}
 		else
 		{
-			//Validamos el acceso solo al usuario logueado y autorizado.
-			if ($_SESSION['almacen']==1)
+			if ($_SESSION['acceso']==1)
 			{
 				$rspta=$usuario->activar($idusuario);
  				echo $rspta ? "Usuario activado" : "Usuario no se puede activar";
-			//Fin de las validaciones de acceso
 			}
 			else
 			{
@@ -155,17 +142,14 @@ switch ($_GET["op"]){
 	case 'mostrar':
 		if (!isset($_SESSION["nombre"]))
 		{
-		  header("Location: ../vistas/login.html");//Validamos el acceso solo a los usuarios logueados al sistema.
+		  header("Location: ../vistas/login.html");
 		}
 		else
 		{
-			//Validamos el acceso solo al usuario logueado y autorizado.
-			if ($_SESSION['almacen']==1)
+			if ($_SESSION['acceso']==1)
 			{
 				$rspta=$usuario->mostrar($idusuario);
-		 		//Codificar el resultado utilizando json
 		 		echo json_encode($rspta);
-			//Fin de las validaciones de acceso
 			}
 			else
 			{
@@ -177,15 +161,13 @@ switch ($_GET["op"]){
 	case 'listar':
 		if (!isset($_SESSION["nombre"]))
 		{
-		  header("Location: ../vistas/login.html");//Validamos el acceso solo a los usuarios logueados al sistema.
+		  header("Location: ../vistas/login.html");
 		}
 		else
 		{
-			//Validamos el acceso solo al usuario logueado y autorizado.
-			if ($_SESSION['almacen']==1)
+			if ($_SESSION['acceso']==1)
 			{
 				$rspta=$usuario->listar();
-		 		//Vamos a declarar un array
 		 		$data= Array();
 
 		 		while ($reg=$rspta->fetch_object()){
@@ -206,12 +188,11 @@ switch ($_GET["op"]){
 		 				);
 		 		}
 		 		$results = array(
-		 			"sEcho"=>1, //Información para el datatables
-		 			"iTotalRecords"=>count($data), //enviamos el total registros al datatable
-		 			"iTotalDisplayRecords"=>count($data), //enviamos el total registros a visualizar
+		 			"sEcho"=>1,
+		 			"iTotalRecords"=>count($data),
+		 			"iTotalDisplayRecords"=>count($data),
 		 			"aaData"=>$data);
 		 		echo json_encode($results);
-			//Fin de las validaciones de acceso
 			}
 			else
 			{
@@ -221,24 +202,19 @@ switch ($_GET["op"]){
 	break;
 
 	case 'permisos':
-		//Obtenemos todos los permisos de la tabla permisos
 		require_once "../modelos/Permiso.php";
 		$permiso = new Permiso();
 		$rspta = $permiso->listar();
 
-		//Obtener los permisos asignados al usuario
 		$id=$_GET['id'];
 		$marcados = $usuario->listarmarcados($id);
-		//Declaramos el array para almacenar todos los permisos marcados
 		$valores=array();
 
-		//Almacenar los permisos asignados al usuario en el array
 		while ($per = $marcados->fetch_object())
 			{
 				array_push($valores, $per->idpermiso);
 			}
 
-		//Mostramos la lista de permisos en la vista y si están o no marcados
 		while ($reg = $rspta->fetch_object())
 				{
 					$sw=in_array($reg->idpermiso,$valores)?'checked':'';
@@ -250,36 +226,29 @@ switch ($_GET["op"]){
 		$logina=$_POST['logina'];
 	    $clavea=$_POST['clavea'];
 
-	    //Hash SHA256 en la contraseña
-		$clavehash=hash("SHA256",$clavea);
+	    $clavehash=hash("SHA256",$clavea);
 
-		// ⭐ Ahora permite login con EMAIL o con LOGIN (usuario)
+		// ✅ SOLO VERIFICAR POR EMAIL
 		$rspta=$usuario->verificar($logina, $clavehash);
 
 		$fetch=$rspta->fetch_object();
 
 		if (isset($fetch))
 	    {
-	        //Declaramos las variables de sesión
 	        $_SESSION['idusuario']=$fetch->idusuario;
 	        $_SESSION['nombre']=$fetch->nombre;
 	        $_SESSION['imagen']=$fetch->imagen;
-	        $_SESSION['login']=$fetch->login;
-	        $_SESSION['email']=$fetch->email; // ⭐ Agregamos email a la sesión
+	        $_SESSION['email']=$fetch->email;
 
-	        //Obtenemos los permisos del usuario
-	    	$marcados = $usuario->listarmarcados($fetch->idusuario);
+	        $marcados = $usuario->listarmarcados($fetch->idusuario);
 
-	    	//Declaramos el array para almacenar todos los permisos marcados
 			$valores=array();
 
-			//Almacenamos los permisos marcados en el array
 			while ($per = $marcados->fetch_object())
 				{
 					array_push($valores, $per->idpermiso);
 				}
 
-			//Determinamos los accesos del usuario
 			in_array(1,$valores)?$_SESSION['escritorio']=1:$_SESSION['escritorio']=0;
 			in_array(2,$valores)?$_SESSION['almacen']=1:$_SESSION['almacen']=0;
 			in_array(3,$valores)?$_SESSION['compras']=1:$_SESSION['compras']=0;
@@ -292,14 +261,26 @@ switch ($_GET["op"]){
 	    echo json_encode($fetch);
 	break;
 
+	// ✅ CORREGIR CASO SALIR - CERRAR SESIÓN
 	case 'salir':
-		//Limpiamos las variables de sesión   
-        session_unset();
-        //Destruímos la sesión
-        session_destroy();
-        //Redireccionamos al login
-        header("Location: ../index.php");
-
+		// Destruir todas las variables de sesión
+		$_SESSION = array();
+		
+		// Si se desea destruir la sesión completamente, borrar también la cookie de sesión
+		if (ini_get("session.use_cookies")) {
+			$params = session_get_cookie_params();
+			setcookie(session_name(), '', time() - 42000,
+				$params["path"], $params["domain"],
+				$params["secure"], $params["httponly"]
+			);
+		}
+		
+		// Finalmente, destruir la sesión
+		session_destroy();
+		
+		// Redirigir al login
+		header("Location: ../index.php");
+		exit();
 	break;
 }
 ob_end_flush();

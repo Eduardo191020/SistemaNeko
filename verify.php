@@ -2,22 +2,19 @@
 // verify.php
 declare(strict_types=1);
 
-require_once __DIR__ . '/includes/db.php';          // $pdo (PDO)
-require_once __DIR__ . '/includes/mailer_smtp.php'; // sendAuthCode($to, $code)
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/mailer_smtp.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
 
-// Debe venir del login (guardamos idusuario en sesión para OTP)
 $userId = $_SESSION['otp_uid'] ?? null;
 if (!$userId) {
   header('Location: login.php');
   exit;
 }
 
-/* ======================== CONFIG ======================== */
-$MAX_ATTEMPTS = 5;   // intentos máximos permitidos por OTP
-$OTP_TTL_MIN  = 10;  // minutos de validez del OTP
-/* ======================================================== */
+$MAX_ATTEMPTS = 5;
+$OTP_TTL_MIN  = 10;
 
 $error   = '';
 $success = '';
@@ -80,11 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
       } else {
         $inputHash = hash('sha256', $code);
         if (hash_equals(strtolower((string)$otpRow['code_hash']), strtolower($inputHash))) {
-          // Código correcto: borrar OTP y autenticar
           $pdo->prepare('DELETE FROM user_otp WHERE id = ?')->execute([(int)$otpRow['id']]);
 
-          // Traer datos del usuario
-          $u = $pdo->prepare('SELECT idusuario, nombre, condicion, id_rol FROM usuario WHERE idusuario = ? LIMIT 1');
+          $u = $pdo->prepare('SELECT idusuario, nombre, imagen, condicion, id_rol FROM usuario WHERE idusuario = ? LIMIT 1');
           $u->execute([(int)$userId]);
           $usr = $u->fetch();
 
@@ -95,70 +90,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'verif
             session_regenerate_id(true);
             $_SESSION['idusuario']  = (int)$usr['idusuario'];
             $_SESSION['nombre']     = (string)$usr['nombre'];
-            $_SESSION['imagen']     = $_SESSION['imagen'] ?? 'default.png';
+            $_SESSION['imagen']     = (string)($usr['imagen'] ?: 'default.png');
 
-            // ======= SETEO DE FLAGS DEL MENÚ SEGÚN PERMISOS =======
-            $flags = [
-              'escritorio'=>0,
-              'almacen'   =>0,
-              'compras'   =>0,
-              'ventas'    =>0,
-              'acceso'    =>0,
-              'consultac' =>0,
-              'consultav' =>0,
-            ];
-
-            // Intentar cargar permisos reales
-            $map = [
-              'ESCRITORIO'        => 'escritorio',
-              'ALMACEN'           => 'almacen',
-              'COMPRAS'           => 'compras',
-              'VENTAS'            => 'ventas',
-              'ACCESO'            => 'acceso',
-              'CONSULTA COMPRAS'  => 'consultac',
-              'CONSULTA VENTAS'   => 'consultav',
-            ];
+            // ======= CARGAR PERMISOS DESDE ROL =======
+            // Inicializar todos los permisos en 0
+            $_SESSION['escritorio'] = 0;
+            $_SESSION['almacen']    = 0;
+            $_SESSION['compras']    = 0;
+            $_SESSION['ventas']     = 0;
+            $_SESSION['acceso']     = 0;
+            $_SESSION['consultac']  = 0;
+            $_SESSION['consultav']  = 0;
 
             try {
-              // Permisos por rol
+              // 1. Cargar permisos del ROL
               $qRolPerm = $pdo->prepare("
-                SELECT p.nombre
-                FROM usuario u
-                JOIN rol_permiso rp ON rp.id_rol = u.id_rol
-                JOIN permiso p      ON p.idpermiso = rp.idpermiso
-                WHERE u.idusuario = ?
+                SELECT p.idpermiso, p.nombre
+                FROM rol_permiso rp
+                JOIN permiso p ON p.idpermiso = rp.idpermiso
+                WHERE rp.id_rol = ?
               ");
-              $qRolPerm->execute([(int)$usr['idusuario']]);
-              $perms = $qRolPerm->fetchAll(PDO::FETCH_COLUMN);
+              $qRolPerm->execute([(int)$usr['id_rol']]);
+              $permsRol = $qRolPerm->fetchAll(PDO::FETCH_ASSOC);
 
-              // Permisos directos por usuario
+              // 2. Cargar permisos DIRECTOS del usuario (sobrescriben al rol)
               $qUsrPerm = $pdo->prepare("
-                SELECT p.nombre
+                SELECT p.idpermiso, p.nombre
                 FROM usuario_permiso up
                 JOIN permiso p ON p.idpermiso = up.idpermiso
                 WHERE up.idusuario = ?
               ");
               $qUsrPerm->execute([(int)$usr['idusuario']]);
-              $perms = array_merge($perms, $qUsrPerm->fetchAll(PDO::FETCH_COLUMN));
+              $permsUsr = $qUsrPerm->fetchAll(PDO::FETCH_ASSOC);
 
-              foreach ($perms as $p) {
-                $key = strtoupper(trim((string)$p));
-                if (isset($map[$key])) {
-                  $flags[$map[$key]] = 1;
+              // Combinar permisos (usuario tiene prioridad)
+              $permisos = array_merge($permsRol, $permsUsr);
+              
+              // Mapeo de permisos
+              $map = [
+                1 => 'escritorio',   // Escritorio
+                2 => 'almacen',      // Almacen
+                3 => 'compras',      // Compras
+                4 => 'ventas',       // Ventas
+                5 => 'acceso',       // Acceso (usuarios)
+                6 => 'consultac',    // Consulta Compras
+                7 => 'consultav',    // Consulta Ventas
+              ];
+
+              // Activar permisos en la sesión
+              foreach ($permisos as $p) {
+                $idpermiso = (int)$p['idpermiso'];
+                if (isset($map[$idpermiso])) {
+                  $_SESSION[$map[$idpermiso]] = 1;
                 }
               }
+
+              // Log para debugging (opcional, comentar en producción)
+              error_log("Usuario {$usr['idusuario']} - Permisos cargados: " . json_encode([
+                'escritorio' => $_SESSION['escritorio'],
+                'almacen' => $_SESSION['almacen'],
+                'compras' => $_SESSION['compras'],
+                'ventas' => $_SESSION['ventas'],
+                'acceso' => $_SESSION['acceso'],
+                'consultac' => $_SESSION['consultac'],
+                'consultav' => $_SESSION['consultav'],
+              ]));
+              
             } catch (Throwable $e) {
-              // Si falla carga de permisos, habilitamos TODO para pruebas:
-              $flags = array_map(fn() => 1, $flags);
+              error_log("Error cargando permisos: " . $e->getMessage());
+              // En caso de error, dar acceso mínimo (solo escritorio)
+              $_SESSION['escritorio'] = 1;
             }
 
-            // Guardar flags
-            foreach ($flags as $k => $v) $_SESSION[$k] = $v ? 1 : 0;
-
-            // Limpiar OTP de sesión
+            // Limpiar variables temporales del OTP
             unset($_SESSION['otp_uid'], $_SESSION['otp_sent'], $_SESSION['otp_name'], $_SESSION['otp_email']);
 
-            // Ir a escritorio
+            // Redirigir al escritorio
             header('Location: vistas/escritorio.php');
             exit;
           }

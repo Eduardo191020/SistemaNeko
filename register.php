@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/db.php';
 
-$error   = '';
+$error = '';
 $success = '';
 
 function validar_dni(string $doc): bool { return (bool)preg_match('/^[0-9]{8}$/', $doc); }
@@ -21,34 +21,30 @@ function validar_ruc(string $doc): bool {
 }
 function validar_pasaporte(string $doc): bool { return (bool)preg_match('/^[A-Za-z0-9]{9,12}$/', $doc); }
 
-/** Valida que el correo no tenga patrones sospechosos */
 function validar_patron_email(string $email): ?string {
   $partes = explode('@', $email);
   if (count($partes) !== 2) return 'Formato de email inválido';
   
   $local = strtolower($partes[0]);
   
-  // 1. Longitud mínima del local
   if (strlen($local) < 3) {
     return 'El nombre de usuario es demasiado corto (mín. 3 caracteres)';
   }
   
-  // 2. Detectar secuencias repetitivas (aaaa, xxxx, 1111)
   if (preg_match('/(.)\1{3,}/', $local)) {
     return 'El correo contiene caracteres repetitivos sospechosos';
   }
   
-  // 3. Detectar patrones aleatorios comunes
   $patrones_sospechosos = [
-    '/^[a-z]{3}\d{3,}$/',           // abc123, xyz789
-    '/^[a-z]{6,}$/',                 // asdfgh, qwerty (solo letras)
-    '/^\d{4,}$/',                    // 12345, 67890 (solo números)
-    '/^(x+|y+|z+|a+)(x+|y+|z+|a+)/', // xxxyyy, aaabbb
-    '/^test\d*$/',                   // test, test123
-    '/^user\d*$/',                   // user123
-    '/^admin\d*$/',                  // admin1
-    '/^demo\d*$/',                   // demo123
-    '/^(abc|xyz|qwe|asd|zxc)\d*$/', // abc123, xyz456
+    '/^[a-z]{3}\d{3,}$/',
+    '/^[a-z]{6,}$/',
+    '/^\d{4,}$/',
+    '/^(x+|y+|z+|a+)(x+|y+|z+|a+)/',
+    '/^test\d*$/',
+    '/^user\d*$/',
+    '/^admin\d*$/',
+    '/^demo\d*$/',
+    '/^(abc|xyz|qwe|asd|zxc)\d*$/',
   ];
   
   foreach ($patrones_sospechosos as $patron) {
@@ -57,29 +53,23 @@ function validar_patron_email(string $email): ?string {
     }
   }
   
-  // 4. Verificar diversidad de caracteres (solo si NO tiene números/puntos/guiones)
-  // Si tiene números o símbolos válidos, es más probable que sea real
   $tiene_numeros = preg_match('/[0-9]/', $local);
   $tiene_simbolos = preg_match('/[._\-]/', $local);
   
-  // Solo validar vocales si NO tiene números ni símbolos (correos puramente alfabéticos)
   if (!$tiene_numeros && !$tiene_simbolos) {
     $vocales = preg_match_all('/[aeiou]/', $local);
     $total_letras = strlen(preg_replace('/[^a-z]/', '', $local));
     
-    // Si es todo letras y muy largo sin vocales, es sospechoso
     if ($total_letras > 8 && $vocales === 0) {
       return 'El correo parece no ser válido (sin vocales)';
     }
     
-    // Verificar diversidad de caracteres solo en correos alfabéticos
     $caracteres_unicos = count(array_unique(str_split($local)));
     if (strlen($local) > 6 && $caracteres_unicos <= 3) {
       return 'El correo tiene un patrón demasiado repetitivo';
     }
   }
   
-  // 6. Verificar secuencias consecutivas (abcdef, 123456)
   for ($i = 0; $i < strlen($local) - 3; $i++) {
     $seq = substr($local, $i, 4);
     if (preg_match('/^[a-z]+$/', $seq)) {
@@ -108,7 +98,6 @@ function validar_patron_email(string $email): ?string {
     }
   }
   
-  // 7. Lista de nombres falsos conocidos
   $nombres_falsos = [
     'asdasd', 'asdfgh', 'qwerty', 'qwertyui', 'zxcvbn',
     'testtest', 'test123', 'prueba', 'ejemplo',
@@ -122,33 +111,27 @@ function validar_patron_email(string $email): ?string {
     }
   }
   
-  return null; // Patrón válido
+  return null;
 }
 
-/** Valida que el correo electrónico sea real y accesible */
 function validar_email_real(string $email): ?string {
-  // 1. Validación de formato
   if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     return 'El formato del correo no es válido.';
   }
 
-  // 2. Validar patrones sospechosos
   $error_patron = validar_patron_email($email);
   if ($error_patron !== null) {
     return $error_patron;
   }
 
-  // 3. Extraer dominio
   $parts = explode('@', $email);
   if (count($parts) !== 2) return 'El correo no tiene un formato válido.';
   $domain = $parts[1];
 
-  // 4. Verificar que el dominio tenga registros MX (servidores de correo)
   if (!checkdnsrr($domain, 'MX') && !checkdnsrr($domain, 'A')) {
     return 'El dominio del correo no existe o no puede recibir emails.';
   }
 
-  // 5. Lista de dominios desechables comunes
   $disposable = [
     'tempmail.com', 'guerrillamail.com', '10minutemail.com', 'throwaway.email',
     'mailinator.com', 'trashmail.com', 'yopmail.com', 'maildrop.cc',
@@ -161,10 +144,9 @@ function validar_email_real(string $email): ?string {
     return 'No se permiten correos temporales o desechables.';
   }
 
-  return null; // Email válido
+  return null;
 }
 
-/** Valida contraseña robusta */
 function validar_password_robusta(
   string $pwd,
   string $email = '',
@@ -221,15 +203,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $password = $_POST['password'] ?? '';
   $confirm  = $_POST['confirm'] ?? '';
 
-  // Validación básica
   if (!$id_tipodoc || !$id_rol || !$nro_documento || !$email || !$password || !$confirm) {
     $error = 'Todos los campos obligatorios deben ser completados.';
   } 
-  // Protección contra Admin
   elseif ($id_rol === 1) {
     $error = 'Acceso denegado. No puedes registrarte con ese rol.';
   }
-  // Verificar que el rol existe y está activo (NO es Admin)
   else {
     $checkRol = $pdo->prepare('SELECT 1 FROM rol_usuarios WHERE id_rol = ? AND estado = 1 AND id_rol != 1 LIMIT 1');
     $checkRol->execute([$id_rol]);
@@ -238,16 +217,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
   }
 
-  // Continuar con validaciones
   if ($error === '') {
-    // ⭐ VALIDAR EMAIL REAL
     $emailError = validar_email_real($email);
     if ($emailError !== null) {
       $error = $emailError;
     } elseif ($password !== $confirm) {
       $error = 'Las contraseñas no coinciden.';
     } else {
-      // Validar documento por tipo
       $okDoc = false;
       if     ($id_tipodoc === 1) $okDoc = validar_dni($nro_documento);
       elseif ($id_tipodoc === 2) $okDoc = validar_ruc($nro_documento);
@@ -256,8 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!$okDoc) {
         $error = 'Número de documento inválido para el tipo seleccionado.';
       } else {
-        // Ajuste de nombres según tipo
-        if ($id_tipodoc === 2) { // RUC
+        if ($id_tipodoc === 2) {
           if ($empresa === '') {
             $error = 'La razón social no fue completada. Usa el autocompletado por SUNAT.';
           } else {
@@ -265,13 +240,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $apellidos = '';
           }
         } else {
-          // DNI o Pasaporte
           if ($nombres === '' || $apellidos === '') {
             $error = 'Nombres y apellidos son obligatorios (usa el autocompletado).';
           }
         }
 
-        // Validación telefono/direccion
         if ($error === '') {
           if ($telefono !== '' && !preg_match('/^[0-9+\-\s]{6,20}$/', $telefono)) {
             $error = 'Teléfono no válido.';
@@ -280,7 +253,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           }
         }
 
-        // Validación contraseña robusta
         if ($error === '') {
           $errPwd = validar_password_robusta($password, $email, $nombres, $apellidos);
           if ($errPwd !== null) {
@@ -289,7 +261,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($error === '') {
-          // ⭐ VERIFICAR DUPLICADOS (email O documento)
           $dup = $pdo->prepare('
             SELECT 
               CASE 
@@ -314,26 +285,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $error = 'Ya existe una cuenta con estos datos.';
             }
           } else {
-            // ⭐ Generar login automático desde el email
-            $loginAuto = explode('@', $email)[0]; // parte antes del @
-            
             $hash = hash('sha256', $password);
             $nombreFinal = ($id_tipodoc === 2) ? $empresa : trim($nombres . ' ' . $apellidos);
 
-            // Inserción en BD (login se genera automáticamente)
-            $ins = $pdo->prepare('
-              INSERT INTO usuario
-                (id_tipodoc, num_documento, id_rol, nombre, email, login, clave, telefono, direccion, condicion)
-              VALUES
-                (?,          ?,              ?,      ?,      ?,     ?,     ?,     ?,        ?,         1)
-            ');
-            if ($ins->execute([$id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $loginAuto, $hash, $telefono, $direccion])) {
+            // Asignar cargo automático según el rol
+            $cargo = '';
+            switch ($id_rol) {
+              case 2: $cargo = 'Vendedor'; break;
+              case 3: $cargo = 'Almacenero'; break;
+              default: $cargo = 'Empleado'; break;
+            }
+
+            try {
+              $pdo->beginTransaction();
+
+              // ✅ INSERTAR SIN EL CAMPO LOGIN
+              $ins = $pdo->prepare('
+                INSERT INTO usuario
+                  (id_tipodoc, num_documento, id_rol, nombre, email, clave, telefono, direccion, cargo, condicion)
+                VALUES
+                  (?,          ?,             ?,      ?,      ?,     ?,     ?,        ?,         ?,     1)
+              ');
+              $ins->execute([$id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $hash, $telefono, $direccion, $cargo]);
+              
+              $newUserId = $pdo->lastInsertId();
+
+              // Asignar permisos automáticos según el rol
+              $permisos = $pdo->prepare('SELECT idpermiso FROM rol_permiso WHERE id_rol = ?');
+              $permisos->execute([$id_rol]);
+              $permisosRol = $permisos->fetchAll(PDO::FETCH_COLUMN);
+
+              // Insertar permisos del usuario
+              $insPermiso = $pdo->prepare('INSERT INTO usuario_permiso (idusuario, idpermiso) VALUES (?, ?)');
+              foreach ($permisosRol as $idpermiso) {
+                $insPermiso->execute([$newUserId, $idpermiso]);
+              }
+
+              $pdo->commit();
+
               $success = 'Registro exitoso. Ahora puedes iniciar sesión con tu correo electrónico.';
-              // Limpiar variables
               $id_tipodoc = $id_rol = 0;
               $nro_documento = $nombres = $apellidos = $empresa = $email = $telefono = $direccion = '';
-            } else {
-              $error = 'Error al registrar. Intenta nuevamente.';
+              
+            } catch (Exception $e) {
+              $pdo->rollBack();
+              $error = 'Error al registrar: ' . $e->getMessage();
             }
           }
         }
@@ -392,7 +388,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <img src="assets/logo.png" alt="Logo Neko" class="brand-logo">
           <h1 class="brand-title">Registro</h1>
           <p class="brand-sub">¿Ya tienes cuenta?</p>
-          <a class="btn btn-outline" href="index.php?m=login">Iniciar Sesión</a>
+          <a class="btn btn-outline" href="login.php">Iniciar Sesión</a>
         </div>
       </div>
 
@@ -402,10 +398,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($error): ?>
           <div class="alert alert-error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
+        
         <?php if ($success): ?>
-          <div class="alert alert-success"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
+          <div class="alert alert-success">
+            <?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?>
+            <br><br>
+            <a href="login.php" class="btn btn-primary w-full">Ir al Login</a>
+          </div>
         <?php endif; ?>
 
+        <?php if (!$success): ?>
         <form method="post" action="register.php" class="auth-form" autocomplete="off" novalidate>
           <!-- Tipo documento -->
           <label class="field">
@@ -443,7 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input id="apellidos" type="text" name="apellidos" value="<?= htmlspecialchars($apellidos) ?>" placeholder="Autocompletado por RENIEC" readonly>
           </label>
 
-          <!-- ⭐ EMAIL (validación en tiempo real) -->
+          <!-- EMAIL -->
           <label class="field">
             <span class="field-label">Correo electrónico *</span>
             <div style="position:relative;">
@@ -502,8 +504,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </label>
 
           <button type="submit" class="btn btn-primary w-full">Crear cuenta</button>
-          <p class="small text-center m-top">¿Ya tienes cuenta? <a href="index.php?m=login" class="link-strong">Inicia sesión</a></p>
+          <p class="small text-center m-top">¿Ya tienes cuenta? <a href="login.php" class="link-strong">Inicia sesión</a></p>
         </form>
+        <?php endif; ?>
       </div>
     </section>
   </div>
@@ -698,7 +701,6 @@ togglePass('pwd2','togglePwd2');
   async function validateEmail() {
     const email = emailInput.value.trim();
     
-    // Resetear si está vacío
     if (!email) {
       emailStatus.textContent = '';
       emailHint.textContent = 'Usarás este correo para iniciar sesión';
@@ -707,10 +709,8 @@ togglePass('pwd2','togglePwd2');
       return;
     }
 
-    // No revisar si es el mismo que ya validamos
     if (email === lastChecked) return;
 
-    // Validar formato básico primero
     if (!isValidFormat(email)) {
       emailStatus.textContent = '❌';
       emailHint.textContent = 'Formato de correo inválido';
@@ -719,11 +719,9 @@ togglePass('pwd2','togglePwd2');
       return;
     }
 
-    // Cancelar request anterior si existe
     if (inflight) inflight.abort();
     inflight = new AbortController();
 
-    // Mostrar estado de carga
     emailStatus.textContent = '⏳';
     emailHint.textContent = 'Verificando correo...';
     emailHint.style.color = '#3b82f6';
@@ -754,17 +752,16 @@ togglePass('pwd2','togglePwd2');
     } catch (e) {
       if (e.name === 'AbortError') return;
       
-      // Error en la validación, pero no bloqueamos
       emailStatus.textContent = '⚠️';
       emailHint.textContent = 'No se pudo verificar. Asegúrate que sea un correo real.';
       emailHint.style.color = '#f59e0b';
-      emailInput.setCustomValidity(''); // No bloquear por error de red
+      emailInput.setCustomValidity('');
     }
   }
 
   function debounce() {
     clearTimeout(timer);
-    timer = setTimeout(validateEmail, 800); // 800ms después de dejar de escribir
+    timer = setTimeout(validateEmail, 800);
   }
 
   emailInput.addEventListener('input', debounce);
