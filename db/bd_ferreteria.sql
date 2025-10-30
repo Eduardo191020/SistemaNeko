@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 29-10-2025 a las 00:36:38
+-- Tiempo de generación: 30-10-2025 a las 22:23:35
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.0.30
 
@@ -33,7 +33,7 @@ CREATE TABLE `articulo` (
   `codigo` varchar(50) DEFAULT NULL,
   `nombre` varchar(100) NOT NULL,
   `stock` int(11) NOT NULL,
-  `precio_compra` decimal(10,2) NOT NULL,
+  `precio_compra` decimal(11,2) NOT NULL DEFAULT 0.00,
   `precio_venta` decimal(10,2) NOT NULL,
   `descripcion` varchar(256) DEFAULT NULL,
   `imagen` varchar(50) DEFAULT NULL,
@@ -44,9 +44,11 @@ CREATE TABLE `articulo` (
 -- Volcado de datos para la tabla `articulo`
 --
 
-INSERT INTO `articulo` (`idarticulo`, `idcategoria`, `codigo`, `nombre`, `stock`, `precio_venta`, `descripcion`, `imagen`, `condicion`) VALUES
-(5, 8, '21321355677', 'Tambores de freno', 55, 36.80, 'Tambores de Freno Descripción', '1760920283.jpg', 1),
-(6, 8, '09227222', 'Pastillas de frenos', 55, 36.80, 'Pastilla de frenos', '1760920293.jpg', 1);
+INSERT INTO `articulo` (`idarticulo`, `idcategoria`, `codigo`, `nombre`, `stock`, `precio_compra`, `precio_venta`, `descripcion`, `imagen`, `condicion`) VALUES
+(5, 8, '21321355677', 'Tambores de freno', 60, 0.00, 36.80, 'Tambores de Freno Descripción', '1760920283.jpg', 1),
+(6, 8, '09227222', 'Pastillas de frenos', 60, 0.00, 115.00, 'Pastilla de frenos', '1760920293.jpg', 1),
+(10, 8, '21321355672', 'Discos de embrague', 0, 0.00, 100.00, 'pieza fundamental del sistema de transmisión de un vehículo', '1761714848.jpg', 1),
+(11, 8, '274584727348', 'Zapatas de freno', 5, 0.00, 112.90, 'componentes de metal con forma curva que se usan en los frenos de tambor', '', 1);
 
 -- --------------------------------------------------------
 
@@ -66,7 +68,7 @@ CREATE TABLE `categoria` (
 --
 
 INSERT INTO `categoria` (`idcategoria`, `nombre`, `descripcion`, `condicion`) VALUES
-(7, 'Cilindraje', 'Aceitado de la Marca Bosh', 0),
+(7, 'Cilindraje', 'Aceitado de la Marca Bosh', 1),
 (8, 'Sistema de Embrague', 'Reúne las piezas que permiten transmitir la potencia del motor a la caja de cambios.', 1);
 
 -- --------------------------------------------------------
@@ -90,7 +92,9 @@ CREATE TABLE `detalle_ingreso` (
 
 INSERT INTO `detalle_ingreso` (`iddetalle_ingreso`, `idingreso`, `idarticulo`, `cantidad`, `precio_compra`, `precio_venta`) VALUES
 (13, 10, 5, 50, 36.50, 36.80),
-(14, 10, 6, 50, 36.50, 36.80);
+(14, 10, 6, 50, 36.50, 36.80),
+(15, 11, 5, 5, 36.00, 36.80),
+(16, 11, 6, 5, 114.00, 115.00);
 
 --
 -- Disparadores `detalle_ingreso`
@@ -117,13 +121,6 @@ CREATE TABLE `detalle_venta` (
   `precio_venta` decimal(11,2) NOT NULL,
   `descuento` decimal(11,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Volcado de datos para la tabla `detalle_venta`
---
-
-INSERT INTO `detalle_venta` (`iddetalle_venta`, `idventa`, `idarticulo`, `cantidad`, `precio_venta`, `descuento`) VALUES
-(21, 9, 5, 1, 0.00, 0.00);
 
 --
 -- Disparadores `detalle_venta`
@@ -160,7 +157,8 @@ CREATE TABLE `ingreso` (
 --
 
 INSERT INTO `ingreso` (`idingreso`, `idproveedor`, `idusuario`, `tipo_comprobante`, `serie_comprobante`, `num_comprobante`, `fecha_hora`, `impuesto`, `total_compra`, `estado`) VALUES
-(10, 13, 5, 'Factura', '001', '0001', '2025-10-19 00:00:00', 18.00, 3650.00, 'Aceptado');
+(10, 13, 5, 'Factura', '001', '0001', '2025-10-19 00:00:00', 18.00, 3650.00, 'Aceptado'),
+(11, 13, 5, 'Boleta', '002', '0002', '2025-10-30 00:00:00', 0.00, 750.00, 'Aceptado');
 
 --
 -- Disparadores `ingreso`
@@ -237,7 +235,6 @@ CREATE TABLE `persona` (
 --
 
 INSERT INTO `persona` (`idpersona`, `tipo_persona`, `nombre`, `tipo_documento`, `num_documento`, `direccion`, `telefono`, `email`) VALUES
-(11, 'Cliente', 'Eduardo R', 'DNI', '17543473', 'Eleodoro Coral 270', '966853147', 'serg.dangr@hotmail.com'),
 (13, 'Proveedor', 'FERRETERIA EL PROVEEDOR S A', 'RUC', '20100712670', '', '932375900', 'provedorsa@gmail.com');
 
 -- --------------------------------------------------------
@@ -260,7 +257,8 @@ CREATE TABLE `rol_usuarios` (
 INSERT INTO `rol_usuarios` (`id_rol`, `nombre`, `estado`, `creado_en`) VALUES
 (1, 'Admin', 1, '2025-10-16 16:26:58'),
 (2, 'Vendedor', 1, '2025-10-16 16:26:58'),
-(3, 'Almacenero', 1, '2025-10-16 16:26:58');
+(3, 'Almacenero', 1, '2025-10-16 16:26:58'),
+(9, 'Supervisor', 1, '2025-10-29 03:40:12');
 
 -- --------------------------------------------------------
 
@@ -360,13 +358,6 @@ CREATE TABLE `venta` (
   `total_venta` decimal(11,2) NOT NULL,
   `estado` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Volcado de datos para la tabla `venta`
---
-
-INSERT INTO `venta` (`idventa`, `idcliente`, `idusuario`, `tipo_comprobante`, `serie_comprobante`, `num_comprobante`, `fecha_hora`, `impuesto`, `total_venta`, `estado`) VALUES
-(9, 11, 3, 'Boleta', '21', '21', '2001-02-21 00:00:00', 21.00, 0.00, 'Aceptado');
 
 --
 -- Índices para tablas volcadas
@@ -487,19 +478,19 @@ ALTER TABLE `venta`
 -- AUTO_INCREMENT de la tabla `articulo`
 --
 ALTER TABLE `articulo`
-  MODIFY `idarticulo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `idarticulo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `categoria`
 --
 ALTER TABLE `categoria`
-  MODIFY `idcategoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `idcategoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_ingreso`
 --
 ALTER TABLE `detalle_ingreso`
-  MODIFY `iddetalle_ingreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `iddetalle_ingreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_venta`
@@ -511,7 +502,7 @@ ALTER TABLE `detalle_venta`
 -- AUTO_INCREMENT de la tabla `ingreso`
 --
 ALTER TABLE `ingreso`
-  MODIFY `idingreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `idingreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `password_reset`
@@ -535,13 +526,13 @@ ALTER TABLE `persona`
 -- AUTO_INCREMENT de la tabla `rol_usuarios`
 --
 ALTER TABLE `rol_usuarios`
-  MODIFY `id_rol` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_rol` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `user_otp`
 --
 ALTER TABLE `user_otp`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
