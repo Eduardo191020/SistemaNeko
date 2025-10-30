@@ -41,15 +41,22 @@ switch ($_GET["op"]){
 				move_uploaded_file($_FILES["imagen"]["tmp_name"], "../files/articulos/" . $imagen);
 			}
 		}
-		if (empty($idarticulo)){
-			$rspta=$articulo->insertar($idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen);
-			echo $rspta ? "Artículo registrado" : "Artículo no se pudo registrar";
-		}
-		else {
-			$rspta=$articulo->editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen);
-			echo $rspta ? "Artículo actualizado" : "Artículo no se pudo actualizar";
-		}
-	break;
+    if (empty($idarticulo)){
+        $rspta = $articulo->insertar($idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen);
+        if ($rspta === "duplicado"){
+            echo "duplicado";
+        } else {
+            echo $rspta ? "Artículo registrado" : "Artículo no se pudo registrar";
+        }
+    } else {
+        $rspta = $articulo->editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen);
+        if ($rspta === "duplicado"){
+            echo "duplicado";
+        } else {
+            echo $rspta ? "Artículo actualizado" : "Artículo no se pudo actualizar";
+        }
+    }
+break;
 
 	case 'desactivar':
 		$rspta=$articulo->desactivar($idarticulo);

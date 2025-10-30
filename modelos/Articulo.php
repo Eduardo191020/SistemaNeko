@@ -10,20 +10,40 @@ Class Articulo
 
 	}
 
-	//Implementamos un método para insertar registros
-	public function insertar($idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen)
-	{
-		$sql="INSERT INTO articulo (idcategoria,codigo,nombre,stock,precio_venta,descripcion,imagen,condicion)
-		VALUES ('$idcategoria','$codigo','$nombre','$stock','$precio_venta','$descripcion','$imagen','1')";
-		return ejecutarConsulta($sql);
-	}
+	// Helper: ¿existe un artículo con ese nombre?
+private function existeNombre($nombre, $idarticulo = null){
+    $nombre = trim($nombre);
+    $sql = "SELECT idarticulo FROM articulo 
+            WHERE nombre = '$nombre' " . ($idarticulo ? "AND idarticulo <> '$idarticulo'" : "") . "
+            LIMIT 1";
+    $fila = ejecutarConsultaSimpleFila($sql);
+    return isset($fila['idarticulo']); // true si existe
+}
 
-	//Implementamos un método para editar registros
-	public function editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen)
-	{
-		$sql="UPDATE articulo SET idcategoria='$idcategoria',codigo='$codigo',nombre='$nombre',stock='$stock',precio_venta='$precio_venta',descripcion='$descripcion',imagen='$imagen' WHERE idarticulo='$idarticulo'";
-		return ejecutarConsulta($sql);
-	}
+public function insertar($idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen)
+{
+    // PRE-CHEQUEO: evita pegarle al UNIQUE
+    if ($this->existeNombre($nombre)) {
+        return "duplicado";
+    }
+
+    $sql="INSERT INTO articulo (idcategoria,codigo,nombre,stock,precio_venta,descripcion,imagen,condicion)
+          VALUES ('$idcategoria','$codigo','$nombre','$stock','$precio_venta','$descripcion','$imagen','1')";
+    return ejecutarConsulta($sql);
+}
+
+public function editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen)
+{
+    // PRE-CHEQUEO: mismo nombre en otro id
+    if ($this->existeNombre($nombre, $idarticulo)) {
+        return "duplicado";
+    }
+
+    $sql="UPDATE articulo SET idcategoria='$idcategoria', codigo='$codigo', nombre='$nombre',
+         stock='$stock', precio_venta='$precio_venta', descripcion='$descripcion', imagen='$imagen'
+         WHERE idarticulo='$idarticulo'";
+    return ejecutarConsulta($sql);
+}
 
 	//Implementamos un método para desactivar registros
 	public function desactivar($idarticulo)

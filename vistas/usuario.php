@@ -131,14 +131,14 @@ if ($_SESSION['acceso']==1)
                                 </div>
 
                                 <div class="form-group col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                    <label>Cargo (*):</label>
+                                    <label>Rol (*):</label>
                                     <select class="form-control" name="cargo" id="cargo" required>
                                         <option value="">Seleccione...</option>
                                         <option value="Administrador">Administrador</option>
                                         <option value="Almacenero">Almacenero</option>
                                         <option value="Vendedor">Vendedor</option>
                                     </select>
-                                    <small class="text-muted">Cargo del usuario en el sistema</small>
+                                    <small class="text-muted">Rol del usuario en el sistema</small>
                                 </div>
                             </div>
 
