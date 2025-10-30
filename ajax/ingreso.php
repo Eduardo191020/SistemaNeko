@@ -135,8 +135,9 @@ switch ($_GET["op"]){
  				"2"=>$reg->categoria,
  				"3"=>$reg->codigo,
  				"4"=>$reg->stock,
-				"5"=>$reg->precio_venta,
- 				"6"=>"<img src='../files/articulos/".$reg->imagen."' height='50px' width='50px' >"
+				"5"=>$reg->precio_compra,
+				"6"=>$reg->precio_venta,
+ 				"7"=>"<img src='../files/articulos/".$reg->imagen."' height='50px' width='50px' >"
  				);
  		}
  		$results = array(

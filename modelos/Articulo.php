@@ -20,19 +20,19 @@ private function existeNombre($nombre, $idarticulo = null){
     return isset($fila['idarticulo']); // true si existe
 }
 
-public function insertar($idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen)
+public function insertar($idcategoria,$codigo,$nombre,$stock,$precio_compra,$precio_venta,$descripcion,$imagen)
 {
     // PRE-CHEQUEO: evita pegarle al UNIQUE
     if ($this->existeNombre($nombre)) {
         return "duplicado";
     }
 
-    $sql="INSERT INTO articulo (idcategoria,codigo,nombre,stock,precio_venta,descripcion,imagen,condicion)
-          VALUES ('$idcategoria','$codigo','$nombre','$stock','$precio_venta','$descripcion','$imagen','1')";
+    $sql="INSERT INTO articulo (idcategoria,codigo,nombre,stock,precio_compra,precio_venta,descripcion,imagen,condicion)
+          VALUES ('$idcategoria','$codigo','$nombre','$stock','$precio_compra','$precio_venta','$descripcion','$imagen','1')";
     return ejecutarConsulta($sql);
 }
 
-public function editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen)
+public function editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_compra,$precio_venta,$descripcion,$imagen)
 {
     // PRE-CHEQUEO: mismo nombre en otro id
     if ($this->existeNombre($nombre, $idarticulo)) {
@@ -40,7 +40,7 @@ public function editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_v
     }
 
     $sql="UPDATE articulo SET idcategoria='$idcategoria', codigo='$codigo', nombre='$nombre',
-         stock='$stock', precio_venta='$precio_venta', descripcion='$descripcion', imagen='$imagen'
+         stock='$stock', precio_compra='$precio_compra',precio_venta='$precio_venta', descripcion='$descripcion', imagen='$imagen'
          WHERE idarticulo='$idarticulo'";
     return ejecutarConsulta($sql);
 }
@@ -69,14 +69,14 @@ public function editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_v
 	//Implementar un método para listar los registros
 	public function listar()
 	{
-		$sql="SELECT a.idarticulo,a.idcategoria,c.nombre as categoria,a.codigo,a.nombre,a.stock,a.precio_venta,a.descripcion,a.imagen,a.condicion FROM articulo a INNER JOIN categoria c ON a.idcategoria=c.idcategoria";
+		$sql="SELECT a.idarticulo,a.idcategoria,c.nombre as categoria,a.codigo,a.nombre,a.stock,a.precio_compra,a.precio_venta,a.descripcion,a.imagen,a.condicion FROM articulo a INNER JOIN categoria c ON a.idcategoria=c.idcategoria";
 		return ejecutarConsulta($sql);		
 	}
 
 	//Implementar un método para listar los registros activos
 	public function listarActivos()
 	{
-		$sql="SELECT a.idarticulo,a.idcategoria,c.nombre as categoria,a.codigo,a.nombre,a.stock,a.precio_venta,a.descripcion,a.imagen,a.condicion FROM articulo a INNER JOIN categoria c ON a.idcategoria=c.idcategoria WHERE a.condicion='1'";
+		$sql="SELECT a.idarticulo,a.idcategoria,c.nombre as categoria,a.codigo,a.nombre,a.stock,a.precio_compra,a.precio_venta,a.descripcion,a.imagen,a.condicion FROM articulo a INNER JOIN categoria c ON a.idcategoria=c.idcategoria WHERE a.condicion='1'";
 		return ejecutarConsulta($sql);		
 	}
 

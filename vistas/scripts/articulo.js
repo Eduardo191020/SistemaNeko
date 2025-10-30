@@ -1,8 +1,6 @@
 // vistas/scripts/articulo.js
 var tabla;
 
-// ======================= Helpers de validación =======================
-
 // Nombre: solo letras (con acentos) y espacios, 3..50, sin repeticiones absurdas.
 function esNombreValido(nombre) {
   const txt = (nombre || "").trim();
@@ -88,7 +86,6 @@ $("#stock").on("input", function() {
   }
 });
 
-
 }
 
 // ============================== Vistas ===============================
@@ -97,6 +94,7 @@ function limpiar() {
   $("#nombre").val("");
   $("#descripcion").val("");
   $("#stock").val("");
+  $("#precio_compra").val("");
   $("#precio_venta").val("");
   $("#imagenmuestra").attr("src", "").hide();
   $("#imagenactual").val("");
@@ -230,6 +228,7 @@ function mostrar(idarticulo) {
       $("#codigo").val(data.codigo);
       $("#nombre").val(data.nombre);
       $("#stock").val(data.stock);
+      $("#precio_compra").val(data.precio_compra);
       $("#precio_venta").val(data.precio_venta);
       $("#descripcion").val(data.descripcion);
 

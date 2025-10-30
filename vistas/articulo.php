@@ -41,6 +41,7 @@ $canAlmacen = !empty($_SESSION['almacen']) && (int)$_SESSION['almacen'] === 1;
                 <th>Categoría</th>
                 <th>Código</th>
                 <th>Stock</th>
+                <th>Precio Compra</th>
                 <th>Precio Venta</th>
                 <th>Imagen</th>
                 <th>Estado</th>
@@ -52,6 +53,7 @@ $canAlmacen = !empty($_SESSION['almacen']) && (int)$_SESSION['almacen'] === 1;
                 <th>Categoría</th>
                 <th>Código</th>
                 <th>Stock</th>
+                <th>Precio Compra</th>
                 <th>Precio Venta</th>
                 <th>Imagen</th>
                 <th>Estado</th>
@@ -82,6 +84,14 @@ $canAlmacen = !empty($_SESSION['almacen']) && (int)$_SESSION['almacen'] === 1;
                 <label>Stock(*):</label>
                 <input type="number" class="form-control" name="stock" id="stock"
                        min="0" step="1" required>
+              </div> 
+
+              <div class="form-group col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                <label>Precio_Compra(*):</label>
+                <input type="text" class="form-control" name="precio_venta" id="precio_venta"
+                       placeholder="0.00" inputmode="decimal"
+                       pattern="^\d{1,7}(\.\d{1,2})?$"
+                       title="Solo números (máx. 2 decimales)" required>
               </div>
 
               <div class="form-group col-lg-6 col-md-6 col-sm-6 col-xs-12">

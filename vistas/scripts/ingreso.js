@@ -235,7 +235,7 @@ function marcarImpuesto()
 function agregarDetalle(idarticulo,articulo,precio_venta)
   {
   	var cantidad=1;
-    var precio_compra=1;
+   //var precio_compra=1;
    //var precio_venta=1;
 
     if (idarticulo!="")

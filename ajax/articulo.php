@@ -21,6 +21,7 @@ $idcategoria=isset($_POST["idcategoria"])? limpiarCadena($_POST["idcategoria"]):
 $codigo=isset($_POST["codigo"])? limpiarCadena($_POST["codigo"]):"";
 $nombre=isset($_POST["nombre"])? limpiarCadena($_POST["nombre"]):"";
 $stock=isset($_POST["stock"])? limpiarCadena($_POST["stock"]):"";
+$precio_compra=isset($_POST["precio_compra"])? limpiarCadena($_POST["precio_compra"]):"";
 $precio_venta=isset($_POST["precio_venta"])? limpiarCadena($_POST["precio_venta"]):"";
 $descripcion=isset($_POST["descripcion"])? limpiarCadena($_POST["descripcion"]):"";
 $imagen=isset($_POST["imagen"])? limpiarCadena($_POST["imagen"]):"";
@@ -42,14 +43,14 @@ switch ($_GET["op"]){
 			}
 		}
     if (empty($idarticulo)){
-        $rspta = $articulo->insertar($idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen);
+        $rspta = $articulo->insertar($idcategoria,$codigo,$nombre,$stock,$precio_compra,$precio_venta,$descripcion,$imagen);
         if ($rspta === "duplicado"){
             echo "duplicado";
         } else {
             echo $rspta ? "Artículo registrado" : "Artículo no se pudo registrar";
         }
     } else {
-        $rspta = $articulo->editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_venta,$descripcion,$imagen);
+        $rspta = $articulo->editar($idarticulo,$idcategoria,$codigo,$nombre,$stock,$precio_compra,$precio_venta,$descripcion,$imagen);
         if ($rspta === "duplicado"){
             echo "duplicado";
         } else {
@@ -89,9 +90,10 @@ break;
  				"2"=>$reg->categoria,
  				"3"=>$reg->codigo,
  				"4"=>$reg->stock,
-				"5"=>$reg->precio_venta,
- 				"6"=>"<img src='../files/articulos/".$reg->imagen."' height='50px' width='50px' >",
- 				"7"=>($reg->condicion)?'<span class="label bg-green">Activado</span>':
+				"5"=>$reg->precio_compra,
+				"6"=>$reg->precio_venta,
+ 				"7"=>"<img src='../files/articulos/".$reg->imagen."' height='50px' width='50px' >",
+ 				"8"=>($reg->condicion)?'<span class="label bg-green">Activado</span>':
  				'<span class="label bg-red">Desactivado</span>'
  				);
  		}

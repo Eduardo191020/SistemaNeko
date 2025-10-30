@@ -39,7 +39,7 @@ function flag($k){ return !empty($_SESSION[$k]) && (int)$_SESSION[$k] === 1; }
 
     <link rel="stylesheet" href="../public/css/bootstrap-select.min.css">
   </head>
-  <body class="hold-transition skin-yellow sidebar-mini">
+  <body class="hold-transition skin-blue sidebar-mini">
     <div class="wrapper">
 
       <header class="main-header">

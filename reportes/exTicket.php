@@ -33,7 +33,7 @@ $reg = $rspta->fetch_object();
 //Establecemos los datos de la empresa
 $logo = "logo.jpg";
 $ext_logo = "jpg";
-$empresa = "Minisoft.";
+$empresa = "Ferretería Neko";
 $documento = "74134653";
 $direccion = "Urb.San juan Chiclayo";
 $telefono = "932375500";

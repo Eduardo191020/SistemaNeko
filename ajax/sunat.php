@@ -60,7 +60,7 @@ if (!function_exists('curl_init')) {
 }
 
 $TOKEN = getenv('MIAPI_CLOUD_TOKEN')
-  ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0MzEsImV4cCI6MTc2MjAxMTI2MX0.M_rnxQ0tn5AVXet5MZPxk1CfCLb0_V0hZGtGYgt0fmo';
+  ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0OTIsImV4cCI6MTc2MjQzOTE0N30.Mtmqa8GHVk8jmAe_vfGLgG7Z_Tz0xxrlixhSa2Ued_w';
 
 $url = "https://miapi.cloud/v1/ruc/{$ruc}";
 $ch  = curl_init($url);
