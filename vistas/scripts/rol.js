@@ -1,14 +1,21 @@
-var tabla;
+var tabla; 
 // Permitir solo letras (con acentos) y espacios; compacta espacios
 function soloLetras(el){
   el.value = el.value
-    .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "") // quita todo menos letras y espacio
-    .replace(/\s{2,}/g, " ")                    // evita espacios dobles
-    .replace(/^\s+/, "");                       // sin espacio inicial
+    .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^\s+/, "");
 }
-// Valida nombre con el mismo criterio del pattern
+
+// Validar nombre con criterio avanzado
 function esNombreValido(txt){
-  return /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]{3,50}$/.test(txt.trim());
+  txt = txt.trim();
+  if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]{3,50}$/.test(txt)) return false;
+  if (/^(.)\1{2,}$/.test(txt)) return false;
+  if (!/[AEIOUÁÉÍÓÚaeiouáéíóú]/.test(txt)) return false;
+  const invalidos = ["xxx", "wewqeq", "asdf", "qwe", "test", "rol", "role", "prueba"];
+  if (invalidos.some(p => txt.toLowerCase().includes(p))) return false;
+  return true;
 }
 
 //Función que se ejecuta al inicio
@@ -20,7 +27,6 @@ function init(){
     guardaryeditar(e);
   });
 
-  // Activar menú (ajusta el ID si tu menú se llama distinto)
   $("#mAcceso").addClass("treeview active");
   $("#lRoles").addClass("active");
 }
@@ -52,36 +58,49 @@ function cancelarform(){
   mostrarform(false);
 }
 
-//Función listar
+// ======= FUNCIÓN LISTAR (CORREGIDA) =======
 function listar(){
   tabla = $('#tbllistado').dataTable({
-    "aProcessing": true, //Activamos el procesamiento del datatables
-    "aServerSide": true, //Paginación y filtrado realizados por el servidor
-    dom: 'Bfrtip', //Definimos los elementos del control de tabla
-    buttons: [
-      'copyHtml5',
-      'excelHtml5',
-      'csvHtml5',
-      'pdf'
-    ],
+    "aProcessing": true,
+    "aServerSide": true,
+    dom: 'Bfrtip',
+    buttons: ['copyHtml5','excelHtml5','csvHtml5','pdf'],
     "ajax": {
       url: '../ajax/rol.php?op=listar',
       type: "get",
       dataType: "json",
-      error: function(e){
-        console.log(e.responseText);
-      }
+      error: function(e){ console.log(e.responseText); }
     },
+    // Mapea las 4 columnas visibles a los índices correctos del backend
+    "columns": [
+      { "data": 0 }, // Opciones
+      { "data": 2 }, // Nombre (saltamos el 1, que es el ID)
+      { "data": 3 }, // Estado
+      { "data": 4 }  // Creado
+    ],
+    // Opciones no ordenable/buscable
+    "columnDefs": [
+      { "targets": 0, "orderable": false, "searchable": false }
+    ],
     "bDestroy": true,
-    "iDisplayLength": 10, //Cantidad de registros por página
-    "order": [[1, "asc"]] //Ordenar (columna, orden)
+    "iDisplayLength": 10,
+    "order": [[3, "asc"]]   // Ordenar por Nombre (la 2da visible)
   }).DataTable();
 }
+// =========================================
 
-//Función para guardar o editar
 function guardaryeditar(e){
-  e.preventDefault(); //No se activará la acción predeterminada del evento
+  e.preventDefault();
   $("#btnGuardar").prop("disabled", true);
+
+  const nom = $("#nombre").val().trim();
+  if (!esNombreValido(nom)){
+    bootbox.alert("⚠️ Elija un nombre válido. Evite letras repetidas");
+    $("#nombre").focus();
+    $("#btnGuardar").prop("disabled", false);
+    return;
+  }
+
   var formData = new FormData($("#formulario")[0]);
 
   $.ajax({
@@ -105,8 +124,7 @@ function mostrar(idrol){
   $.post("../ajax/rol.php?op=mostrar", {idrol: idrol}, function(data, status){
     data = JSON.parse(data);
     mostrarform(true);
-
-    $("#idrol").val(data.id_rol);
+    $("#idrol").val(data.id_rol); // oculto, interno
     $("#nombre").val(data.nombre);
   });
 }
@@ -136,3 +154,4 @@ function activar(idrol){
 }
 
 init();
+

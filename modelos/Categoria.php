@@ -12,11 +12,19 @@ Class Categoria
 
 	//Implementamos un método para insertar registros
 	public function insertar($nombre,$descripcion)
-	{
-		$sql="INSERT INTO categoria (nombre,descripcion,condicion)
-		VALUES ('$nombre','$descripcion','1')";
-		return ejecutarConsulta($sql);
-	}
+{
+    try {
+        $sql="INSERT INTO categoria (nombre,descripcion,condicion)
+              VALUES ('$nombre','$descripcion','1')";
+        return ejecutarConsulta($sql);
+    } catch (Exception $e) {
+        if (strpos($e->getMessage(), 'Duplicate') !== false) {
+            return "duplicado";
+        } else {
+            return "error";
+        }
+    }
+}
 
 	//Implementamos un método para editar registros
 	public function editar($idcategoria,$nombre,$descripcion)

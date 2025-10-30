@@ -21,16 +21,19 @@ $nombre=isset($_POST["nombre"])? limpiarCadena($_POST["nombre"]):"";
 $descripcion=isset($_POST["descripcion"])? limpiarCadena($_POST["descripcion"]):"";
 
 switch ($_GET["op"]){
-	case 'guardaryeditar':
-		if (empty($idcategoria)){
-			$rspta=$categoria->insertar($nombre,$descripcion);
-			echo $rspta ? "Categoría registrada" : "Categoría no se pudo registrar";
-		}
-		else {
-			$rspta=$categoria->editar($idcategoria,$nombre,$descripcion);
-			echo $rspta ? "Categoría actualizada" : "Categoría no se pudo actualizar";
-		}
-	break;
+case 'guardaryeditar':
+    if (empty($idcategoria)){
+        $rspta = $categoria->insertar($nombre,$descripcion);
+        if ($rspta === "duplicado") {
+            echo "duplicado";
+        } else {
+            echo $rspta ? "Categoría registrada" : "No se pudo registrar";
+        }
+    } else {
+        $rspta = $categoria->editar($idcategoria,$nombre,$descripcion);
+        echo $rspta ? "Categoría actualizada" : "No se pudo actualizar";
+    }
+break;
 
 	case 'desactivar':
 		$rspta=$categoria->desactivar($idcategoria);
