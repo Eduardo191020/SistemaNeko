@@ -33,6 +33,7 @@ CREATE TABLE `articulo` (
   `codigo` varchar(50) DEFAULT NULL,
   `nombre` varchar(100) NOT NULL,
   `stock` int(11) NOT NULL,
+  `precio_compra` decimal(10,2) NOT NULL,
   `precio_venta` decimal(10,2) NOT NULL,
   `descripcion` varchar(256) DEFAULT NULL,
   `imagen` varchar(50) DEFAULT NULL,
