@@ -296,17 +296,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               default: $cargo = 'Empleado'; break;
             }
 
+            // ====== ASIGNACIÓN DE IMAGEN SEGÚN ROL ======
+            $rolImages = [
+              2 => 'vendedor.png',    // Vendedor
+              3 => 'almacenero.jpg',  // Almacenero
+            ];
+            $defaultImage = 'default.png';
+            $imagen = $rolImages[$id_rol] ?? $defaultImage;
+
             try {
               $pdo->beginTransaction();
 
-              // ✅ INSERTAR SIN EL CAMPO LOGIN
+              // ✅ INSERTAR CON IMAGEN
               $ins = $pdo->prepare('
                 INSERT INTO usuario
-                  (id_tipodoc, num_documento, id_rol, nombre, email, clave, telefono, direccion, cargo, condicion)
+                  (id_tipodoc, num_documento, id_rol, nombre, email, clave, telefono, direccion, cargo, imagen, condicion)
                 VALUES
-                  (?,          ?,             ?,      ?,      ?,     ?,     ?,        ?,         ?,     1)
+                  (?,          ?,             ?,      ?,      ?,     ?,     ?,        ?,         ?,     ?,      0)
               ');
-              $ins->execute([$id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $hash, $telefono, $direccion, $cargo]);
+              $ins->execute([
+                $id_tipodoc, $nro_documento, $id_rol, $nombreFinal, $email, $hash,
+                $telefono, $direccion, $cargo, $imagen
+              ]);
               
               $newUserId = $pdo->lastInsertId();
 
