@@ -26,7 +26,6 @@ switch ($_GET["op"]){
 		}
 		else
 		{
-			// ✅ Verificar permiso de Acceso (gestión de usuarios)
 			if ($_SESSION['acceso']==1)
 			{
 				// VALIDACIONES
@@ -54,18 +53,6 @@ switch ($_GET["op"]){
 				if (!isset($_POST['permiso']) || count($_POST['permiso']) == 0) {
 					echo "Error: Debes seleccionar al menos un permiso para el usuario.";
 					break;
-				}
-				
-				if (empty($cargo)) {
-					if (in_array(5, $_POST['permiso'])) {
-						$cargo = 'Administrador';
-					} elseif (in_array(2, $_POST['permiso']) && in_array(3, $_POST['permiso'])) {
-						$cargo = 'Almacenero';
-					} elseif (in_array(4, $_POST['permiso'])) {
-						$cargo = 'Vendedor';
-					} else {
-						$cargo = 'Empleado';
-					}
 				}
 				
 				// Procesar imagen
@@ -222,13 +209,35 @@ switch ($_GET["op"]){
 				}
 	break;
 
+	// ========================================
+	// ✅ CASO CRÍTICO: Cargar roles dinámicamente
+	// ========================================
+	case 'selectRol':
+		if (!isset($_SESSION["nombre"])) {
+			header("Location: ../vistas/login.html");
+			exit;
+		}
+		
+		if ($_SESSION['acceso']==1) {
+			require_once "../modelos/Rol.php";
+			$rol = new Rol();
+			$rspta = $rol->listarActivos();
+
+			echo '<option value="">Seleccione...</option>';
+			while ($reg = $rspta->fetch_object()) {
+				echo '<option value="'.$reg->id_rol.'">'.$reg->nombre.'</option>';
+			}
+		} else {
+			echo '<option value="">Sin acceso</option>';
+		}
+	break;
+
 	case 'verificar':
 		$logina=$_POST['logina'];
 	    $clavea=$_POST['clavea'];
 
 	    $clavehash=hash("SHA256",$clavea);
 
-		// ✅ SOLO VERIFICAR POR EMAIL
 		$rspta=$usuario->verificar($logina, $clavehash);
 
 		$fetch=$rspta->fetch_object();
@@ -261,12 +270,9 @@ switch ($_GET["op"]){
 	    echo json_encode($fetch);
 	break;
 
-	// ✅ CORREGIR CASO SALIR - CERRAR SESIÓN
 	case 'salir':
-		// Destruir todas las variables de sesión
 		$_SESSION = array();
 		
-		// Si se desea destruir la sesión completamente, borrar también la cookie de sesión
 		if (ini_get("session.use_cookies")) {
 			$params = session_get_cookie_params();
 			setcookie(session_name(), '', time() - 42000,
@@ -275,10 +281,8 @@ switch ($_GET["op"]){
 			);
 		}
 		
-		// Finalmente, destruir la sesión
 		session_destroy();
 		
-		// Redirigir al login
 		header("Location: ../index.php");
 		exit();
 	break;

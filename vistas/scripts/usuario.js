@@ -18,10 +18,12 @@ function init(){
 	        $("#permisos").html(r);
 	});
 	
+	// ✅ NUEVO: Cargar roles dinámicamente
+	cargarRoles();
+	
 	$('#mAcceso').addClass("treeview active");
     $('#lUsuarios').addClass("active");
     
-    // IMPORTANTE: Inicializar funcionalidades DESPUÉS de que el DOM esté listo
     setTimeout(function() {
 	    setupDocumentValidation();
 	    setupPasswordValidation();
@@ -31,16 +33,26 @@ function init(){
     }, 300);
 }
 
+// ✅ NUEVA FUNCIÓN: Cargar roles desde la base de datos
+function cargarRoles() {
+	$.post("../ajax/usuario.php?op=selectRol", function(r){
+		$("#cargo").html(r);
+		$("#cargo").selectpicker('refresh');
+		console.log('✓ Roles cargados exitosamente');
+	}).fail(function(xhr, status, error) {
+		console.error('❌ Error cargando roles:', error);
+		bootbox.alert('Error al cargar los roles. Recarga la página.');
+	});
+}
+
 // ========== VALIDACIÓN DE TELÉFONO ==========
 function setupPhoneValidation() {
 	const telefonoInput = document.getElementById('telefono');
 	
 	if (telefonoInput) {
-		// Limpiar listeners previos
 		$(telefonoInput).off('input keypress');
 		
 		$(telefonoInput).on('input', function() {
-			// Solo permitir números, espacios, guiones y el signo +
 			this.value = this.value.replace(/[^0-9\s\-+]/g, '');
 		});
 		
@@ -75,27 +87,22 @@ function setupDocumentValidation() {
 
 	console.log('✓ Validación de documentos iniciada');
 
-	// Limpiar listeners previos
 	$(num_documento).off('input keypress blur');
 	$(tipo_documento).off('change');
 
-	// CRÍTICO: Permitir solo números en el campo de documento
 	$(num_documento).on('input', function(e) {
 		const tipoDoc = $(tipo_documento).val();
 		
-		// Para DNI y RUC, solo números
 		if (tipoDoc === 'DNI' || tipoDoc === 'RUC') {
 			this.value = this.value.replace(/\D/g, '');
 		}
 		
-		// Trigger autocomplete después de limpiar
 		debounceConsulta();
 	});
 
 	$(num_documento).on('keypress', function(e) {
 		const tipoDoc = $(tipo_documento).val();
 		
-		// Para DNI y RUC, bloquear todo excepto números
 		if (tipoDoc === 'DNI' || tipoDoc === 'RUC') {
 			const charCode = (e.which) ? e.which : e.keyCode;
 			if (charCode > 31 && (charCode < 48 || charCode > 57)) {
@@ -105,7 +112,6 @@ function setupDocumentValidation() {
 		}
 	});
 
-	// Cambiar máscara según tipo de documento
 	$(tipo_documento).on('change', function(){
 		$(num_documento).val('');
 		$(nombre).val('');
@@ -144,7 +150,6 @@ function setupDocumentValidation() {
 		}
 	});
 
-	// Consultar RENIEC (DNI)
 	function consultarRENIEC() {
 		const tipoDoc = $(tipo_documento).val();
 		const numDoc = $(num_documento).val();
@@ -202,7 +207,6 @@ function setupDocumentValidation() {
 		});
 	}
 
-	// Consultar SUNAT (RUC)
 	function consultarSUNAT() {
 		const tipoDoc = $(tipo_documento).val();
 		const numDoc = $(num_documento).val();
@@ -259,7 +263,6 @@ function setupDocumentValidation() {
 		});
 	}
 
-	// Debounce para consultas
 	function debounceConsulta() {
 		clearTimeout(timer);
 		timer = setTimeout(function() {
@@ -298,7 +301,6 @@ function setupEmailValidation() {
 	let timer;
 	let lastChecked = '';
 
-	// Limpiar listeners previos
 	$(emailInput).off('input blur');
 
 	function isValidFormat(email) {
@@ -381,7 +383,6 @@ function setupPasswordValidation() {
 	
 	console.log('✓ Validación de contraseña iniciada');
 
-	// Limpiar listeners previos
 	$(pwd).off('input focus');
 
 	function mark(id, ok) {
@@ -442,7 +443,6 @@ function togglePasswordVisibility() {
 	
 	console.log('✓ Toggle contraseña activado');
 	
-	// Limpiar listener previo
 	$(toggleBtn).off('click');
 	
 	$(toggleBtn).on('click', function() {
@@ -458,7 +458,6 @@ function togglePasswordVisibility() {
 
 // ========== FUNCIONES ORIGINALES ==========
 
-//Función limpiar
 function limpiar()
 {
 	$("#nombre").val("");
@@ -479,14 +478,15 @@ function limpiar()
 	$("#hint_numero").text("Ingresa el número de documento").removeClass().addClass("text-muted");
 	$("#hint_tipo").text("Selecciona el tipo de documento").removeClass().addClass("text-muted");
 	
-	// Limpiar validaciones custom
 	if(document.getElementById('email')) {
 		document.getElementById('email').setCustomValidity('');
 	}
 	$("#nombre").attr('readonly', 'readonly');
+	
+	// ✅ Recargar roles al limpiar
+	cargarRoles();
 }
 
-//Función mostrar formulario
 function mostrarform(flag)
 {
 	limpiar();
@@ -505,14 +505,12 @@ function mostrarform(flag)
 	}
 }
 
-//Función cancelarform
 function cancelarform()
 {
 	limpiar();
 	mostrarform(false);
 }
 
-//Función Listar
 function listar()
 {
 	tabla=$('#tbllistado').dataTable(
@@ -552,12 +550,10 @@ function listar()
 	}).DataTable();
 }
 
-//Función para guardar o editar
 function guardaryeditar(e)
 {
 	e.preventDefault();
 	
-	// Validar que al menos un permiso esté seleccionado
 	var permisosChecked = $("input[name='permiso[]']:checked").length;
 	if (permisosChecked === 0) {
 		bootbox.alert("Debes seleccionar al menos un permiso para el usuario.");
@@ -598,16 +594,17 @@ function mostrar(idusuario)
 
 		$("#tipo_documento").val(data.tipo_documento);
 		$("#tipo_documento").selectpicker('refresh');
-		$("#tipo_documento").trigger('change'); // Activar máscara
+		$("#tipo_documento").trigger('change');
 		
 		$("#num_documento").val(data.num_documento);
 		$("#nombre").val(data.nombre);
-		$("#nombre").removeAttr('readonly'); // Permitir edición
+		$("#nombre").removeAttr('readonly');
 		
 		$("#direccion").val(data.direccion);
 		$("#telefono").val(data.telefono);
 		$("#email").val(data.email);
 		$("#cargo").val(data.cargo);
+		$("#cargo").selectpicker('refresh');
 		$("#clave").val(data.clave);
 		
 		$("#imagenmuestra").show();
@@ -621,7 +618,6 @@ function mostrar(idusuario)
 	});
 }
 
-//Función para desactivar registros
 function desactivar(idusuario)
 {
 	bootbox.confirm("¿Está Seguro de desactivar el usuario?", function(result){
@@ -635,7 +631,6 @@ function desactivar(idusuario)
 	})
 }
 
-//Función para activar registros
 function activar(idusuario)
 {
 	bootbox.confirm("¿Está Seguro de activar el Usuario?", function(result){
